@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  ADMIN
+  GURU
+  SISWA
+}
+
+enum AuthMethod {
+  EMAIL_PASSWORD
+  NISN
+}
+
+enum AnswerOption {
+  A
+  B
+  C
+  D
+}
+
+enum TryoutStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+}
+
+enum LearningAspect {
+  MATERI
+  PENYAMPAIAN
+  SOAL
+}
+
+enum SentimentLabel {
+  POSITIF
+  NEGATIF
+  NETRAL
+}
+
+model User {
+  id             String          @id @default(cuid())
+  name           String
+  email          String?         @unique
+  passwordHash   String?
+  role           Role
+  authMethod     AuthMethod
+  teacherProfile TeacherProfile?
+  studentProfile StudentProfile?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([role])
+  @@index([authMethod])
+}
+
+model TeacherProfile {
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  nip              String           @unique
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectTeachers  SubjectTeacher[]
+  createdQuestions Question[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model StudentProfile {
+  id             String          @id @default(cuid())
+  userId         String          @unique
+  nisn           String          @unique
+  className      String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tryoutSessions TryoutSession[]
+  feedbacks      Feedback[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([className])
+}
+
+model Subject {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  description    String?         @db.Text
+  isActive       Boolean         @default(true)
+  questions      Question[]
+  subjectTeachers SubjectTeacher[]
+  tryoutSessions TryoutSession[]
+  feedbacks      Feedback[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([isActive])
+}
+
+model SubjectTeacher {
+  id        String         @id @default(cuid())
+  subjectId String
+  teacherId String
+  subject   Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+
+  @@unique([subjectId, teacherId])
+  @@index([teacherId])
+}
+
+model Question {
+  id                 String         @id @default(cuid())
+  subjectId          String
+  createdByTeacherId String
+  questionText       String         @db.Text
+  optionA            String         @db.Text
+  optionB            String         @db.Text
+  optionC            String         @db.Text
+  optionD            String         @db.Text
+  correctOption      AnswerOption
+  explanation        String?        @db.Text
+  isActive           Boolean        @default(true)
+  subject            Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdByTeacher   TeacherProfile @relation(fields: [createdByTeacherId], references: [id], onDelete: Restrict)
+  tryoutAnswers      TryoutAnswer[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([subjectId, isActive])
+  @@index([createdByTeacherId])
+}
+
+model TryoutSession {
+  id             String          @id @default(cuid())
+  studentId      String
+  subjectId      String
+  status         TryoutStatus    @default(IN_PROGRESS)
+  startedAt      DateTime        @default(now())
+  submittedAt    DateTime?
+  score          Decimal?        @db.Decimal(5, 2)
+  totalQuestions Int             @default(0)
+  correctAnswers Int             @default(0)
+  student        StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject        Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  answers        TryoutAnswer[]
+  feedbacks      Feedback[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([status])
+  @@index([studentId, subjectId])
+}
+
+model TryoutAnswer {
+  id              String         @id @default(cuid())
+  tryoutSessionId String
+  questionId      String
+  selectedOption  AnswerOption
+  isCorrect       Boolean
+  answeredAt      DateTime       @default(now())
+  tryoutSession   TryoutSession  @relation(fields: [tryoutSessionId], references: [id], onDelete: Cascade)
+  question        Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([tryoutSessionId, questionId])
+  @@index([questionId])
+}
+
+model Feedback {
+  id              String            @id @default(cuid())
+  studentId       String
+  subjectId       String
+  tryoutSessionId String
+  aspect          LearningAspect
+  comment         String            @db.Text
+  student         StudentProfile    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject         Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  tryoutSession   TryoutSession     @relation(fields: [tryoutSessionId], references: [id], onDelete: Cascade)
+  sentiment       SentimentAnalysis?
+  createdAt       DateTime          @default(now())
+
+  @@unique([tryoutSessionId, aspect])
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([aspect])
+}
+
+model SentimentAnalysis {
+  id               String         @id @default(cuid())
+  feedbackId       String         @unique
+  label            SentimentLabel
+  confidence       Decimal?       @db.Decimal(5, 4)
+  preprocessedText String?        @db.Text
+  modelVersion     String?
+  feedback         Feedback       @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  analyzedAt       DateTime       @default(now())
+
+  @@index([label])
+}
