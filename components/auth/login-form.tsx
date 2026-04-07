@@ -12,6 +12,9 @@ type LoginFormProps = {
   callbackUrl: string;
 };
 
+const LOGIN_MIN_PENDING_MS = 1100;
+const LOGIN_REDIRECT_DELAY_MS = 1900;
+
 const modeCopy: Record<
   LoginMode,
   {
@@ -60,7 +63,18 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
     redirectTimeoutRef.current = setTimeout(() => {
       router.push(url);
       router.refresh();
-    }, 1800);
+    }, LOGIN_REDIRECT_DELAY_MS);
+  }
+
+  async function withMinimumDelay<T>(work: Promise<T>, minimumMs: number) {
+    const [result] = await Promise.all([
+      work,
+      new Promise((resolve) => {
+        setTimeout(resolve, minimumMs);
+      }),
+    ]);
+
+    return result;
   }
 
   async function handleStaffLogin(formData: FormData) {
@@ -70,12 +84,15 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
     try {
       const result = await toastPromise(
         (async () => {
-          const signInResult = await signIn("staff-credentials", {
-            email,
-            password,
-            redirect: false,
-            callbackUrl,
-          });
+          const signInResult = await withMinimumDelay(
+            signIn("staff-credentials", {
+              email,
+              password,
+              redirect: false,
+              callbackUrl,
+            }),
+            LOGIN_MIN_PENDING_MS,
+          );
 
           if (!signInResult || signInResult.error) {
             throw new Error("Email atau password tidak valid.");
@@ -105,11 +122,14 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
     try {
       const result = await toastPromise(
         (async () => {
-          const signInResult = await signIn("student-nisn", {
-            nisn,
-            redirect: false,
-            callbackUrl,
-          });
+          const signInResult = await withMinimumDelay(
+            signIn("student-nisn", {
+              nisn,
+              redirect: false,
+              callbackUrl,
+            }),
+            LOGIN_MIN_PENDING_MS,
+          );
 
           if (!signInResult || signInResult.error) {
             throw new Error("NISN tidak ditemukan atau belum aktif.");
@@ -246,12 +266,44 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
 
         <button
           type="submit"
-          className="mt-2 h-12 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isPending}
         >
-          {isPending ? "Memproses..." : content.submitLabel}
+          {isPending ? (
+            <>
+              <SpinnerIcon />
+              Memproses...
+            </>
+          ) : (
+            content.submitLabel
+          )}
         </button>
       </form>
     </div>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 animate-spin"
+      fill="none"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        className="stroke-white/35"
+        strokeWidth="2.5"
+      />
+      <path
+        d="M21 12a9 9 0 0 0-9-9"
+        className="stroke-white"
+        strokeLinecap="round"
+        strokeWidth="2.5"
+      />
+    </svg>
   );
 }
