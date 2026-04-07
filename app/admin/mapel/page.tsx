@@ -5,10 +5,25 @@ import {
   updateSubjectAction,
 } from "@/app/admin/_actions";
 import {
-  SearchToolbar,
+  AdminEmptyState,
+  DesktopTable,
+  DesktopTableActionCell,
+  DesktopTableActionHeader,
+  DesktopTableBody,
+  DesktopTableHeaderRow,
+  DesktopTableRow,
+  EditIcon,
+  MobileDataCard,
+  MobileDataCardHeader,
   PageIntro,
+  PaginationControls,
+  SearchToolbar,
   SectionCard,
+  SortableHeaderLink,
   StatusAlert,
+  TableIconButton,
+  ToggleIcon,
+  TrashIcon,
 } from "@/app/admin/_components";
 import {
   ConfirmActionButton,
@@ -21,14 +36,43 @@ import { prisma } from "@/lib/db/prisma";
 type MapelPageProps = {
   searchParams?: Promise<{
     message?: string;
+    order?: string;
+    page?: string;
     q?: string;
+    sort?: string;
     type?: string;
   }>;
 };
 
+const PAGE_SIZE = 8;
+
 export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams?.q?.trim();
+  const currentPage = parsePositiveInt(resolvedSearchParams?.page, 1);
+  const sort = getSubjectSort(resolvedSearchParams?.sort);
+  const order = getSortOrder(resolvedSearchParams?.order);
+
+  const where = query
+    ? {
+        OR: [
+          {
+            description: {
+              contains: query,
+            },
+          },
+          {
+            name: {
+              contains: query,
+            },
+          },
+        ],
+      }
+    : undefined;
+
+  const totalSubjects = await prisma.subject.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalSubjects / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
 
   const subjects = await prisma.subject.findMany({
     include: {
@@ -39,29 +83,24 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
         },
       },
     },
-    where: query
-      ? {
-          OR: [
-            {
-              description: {
-                contains: query,
-              },
-            },
-            {
-              name: {
-                contains: query,
-              },
-            },
-          ],
-        }
-      : undefined,
-    orderBy: {
-      createdAt: "desc",
-    },
+    orderBy: getSubjectOrderBy(sort, order),
+    skip: (safePage - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+    where,
+  });
+
+  const tableParams = {
+    order,
+    q: query,
+    sort,
+  };
+  const resetHref = buildPageHref("/admin/mapel", {
+    order,
+    sort,
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 overflow-x-clip">
       <PageIntro
         eyebrow="Administrasi Mata Pelajaran"
         title="Mata Pelajaran"
@@ -72,11 +111,13 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
 
       <SearchToolbar
         confirmReset
+        params={tableParams}
         query={query}
         placeholder="Cari nama atau deskripsi mata pelajaran"
+        resetHref={resetHref}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="space-y-6">
         <SectionCard
           title="Tambah Mata Pelajaran"
           description="Tambahkan mata pelajaran baru dan tentukan status aktifnya."
@@ -129,25 +170,192 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
           title="Daftar Mata Pelajaran"
           description="Perbarui nama, deskripsi, dan status aktif mata pelajaran."
         >
-          <div className="grid gap-4">
+          <div className="hidden lg:block">
             {subjects.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500">
-                Belum ada mata pelajaran.
-              </p>
+              <AdminEmptyState message="Belum ada mata pelajaran." />
+            ) : (
+              <DesktopTable minWidthClassName="min-w-[980px]">
+                <DesktopTableHeaderRow columnsClassName="grid-cols-[0.9fr_1.2fr_0.8fr_auto]">
+                  <SortableHeaderLink
+                    currentOrder={order}
+                    currentSort={sort}
+                    label="Mata Pelajaran"
+                    pathname="/admin/mapel"
+                    searchParams={{ q: query }}
+                    sortKey="name"
+                  />
+                  <span>Deskripsi</span>
+                  <SortableHeaderLink
+                    currentOrder={order}
+                    currentSort={sort}
+                    label="Status"
+                    pathname="/admin/mapel"
+                    searchParams={{ q: query }}
+                    sortKey="isActive"
+                  />
+                  <DesktopTableActionHeader>Aksi</DesktopTableActionHeader>
+                </DesktopTableHeaderRow>
+
+                <DesktopTableBody>
+                  {subjects.map((subject) => (
+                    <DesktopTableRow
+                      key={subject.id}
+                      columnsClassName="grid-cols-[0.9fr_1.2fr_0.8fr_auto]"
+                    >
+                          <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              Nama
+                            </span>
+                            <input
+                              form={`update-subject-${subject.id}`}
+                              name="name"
+                              type="text"
+                              defaultValue={subject.name}
+                              className="h-10 rounded-2xl border border-slate-200 px-3.5 outline-none transition focus:border-indigo-500"
+                              required
+                            />
+                          </label>
+
+                          <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              Deskripsi
+                            </span>
+                            <textarea
+                              form={`update-subject-${subject.id}`}
+                              name="description"
+                              rows={2}
+                              defaultValue={subject.description ?? ""}
+                              className="rounded-2xl border border-slate-200 px-3.5 py-2.5 outline-none transition focus:border-indigo-500"
+                            />
+                          </label>
+
+                          <div className="grid gap-2 text-sm font-medium text-slate-700">
+                            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              Aktif
+                            </span>
+                            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-3.5 py-2.5">
+                              <input
+                                form={`update-subject-${subject.id}`}
+                                name="isActive"
+                                type="checkbox"
+                                defaultChecked={subject.isActive}
+                                className="size-4 rounded border-slate-300"
+                              />
+                              <span className="text-sm text-slate-600">
+                                {subject.isActive ? "Sedang aktif" : "Sedang nonaktif"}
+                              </span>
+                            </label>
+                          </div>
+
+                          <DesktopTableActionCell className="flex items-center justify-end gap-2">
+                            <button
+                              type="submit"
+                              form={`update-subject-${subject.id}`}
+                              className="rounded-2xl"
+                              title="Perbarui mata pelajaran"
+                            >
+                              <TableIconButton title="Perbarui mata pelajaran" variant="primary">
+                                <EditIcon />
+                                <span className="sr-only">Perbarui</span>
+                              </TableIconButton>
+                            </button>
+                            <form action={toggleSubjectStatusAction}>
+                              <input type="hidden" name="subjectId" value={subject.id} />
+                              <input
+                                type="hidden"
+                                name="isActive"
+                                value={subject.isActive ? "false" : "true"}
+                              />
+                              <ConfirmActionButton
+                                confirmLabel={subject.isActive ? "Ya, nonaktifkan" : "Ya, aktifkan"}
+                                confirmTitle={
+                                  subject.isActive
+                                    ? "Nonaktifkan Mata Pelajaran"
+                                    : "Aktifkan Mata Pelajaran"
+                                }
+                                confirmMessage={
+                                  subject.isActive
+                                    ? "Mata pelajaran ini akan dinonaktifkan dari daftar aktif."
+                                    : "Mata pelajaran ini akan diaktifkan kembali."
+                                }
+                                className="rounded-2xl"
+                              >
+                                <TableIconButton
+                                  title={subject.isActive ? "Nonaktifkan mata pelajaran" : "Aktifkan mata pelajaran"}
+                                  variant="neutral"
+                                >
+                                  <ToggleIcon />
+                                  <span className="sr-only">
+                                    {subject.isActive ? "Nonaktifkan" : "Aktifkan"}
+                                  </span>
+                                </TableIconButton>
+                              </ConfirmActionButton>
+                            </form>
+                            <form action={deleteSubjectAction}>
+                              <input type="hidden" name="subjectId" value={subject.id} />
+                              <ConfirmDeleteButton
+                                className="rounded-2xl"
+                                confirmTitle="Hapus Mata Pelajaran"
+                                confirmMessage="Mata pelajaran ini akan dihapus. Jika masih terhubung dengan data lain, penghapusan dapat ditolak oleh sistem."
+                              >
+                                <TableIconButton title="Hapus mata pelajaran" variant="danger">
+                                  <TrashIcon />
+                                  <span className="sr-only">Hapus</span>
+                                </TableIconButton>
+                              </ConfirmDeleteButton>
+                            </form>
+                          </DesktopTableActionCell>
+
+                          <form
+                            id={`update-subject-${subject.id}`}
+                            action={updateSubjectAction}
+                            className="hidden"
+                          >
+                            <input type="hidden" name="subjectId" value={subject.id} />
+                          </form>
+                    </DesktopTableRow>
+                  ))}
+                </DesktopTableBody>
+              </DesktopTable>
+            )}
+          </div>
+
+          <div className="grid gap-4 lg:hidden">
+            {subjects.length === 0 ? (
+              <AdminEmptyState message="Belum ada mata pelajaran." />
             ) : (
               subjects.map((subject) => (
-                <div
-                  key={subject.id}
-                  className="rounded-[1.5rem] border border-slate-200 p-4"
-                >
-                  <div className="mb-3 flex flex-wrap gap-3 text-xs font-medium text-slate-500">
-                    <span className="rounded-full bg-slate-100 px-3 py-1">
-                      {subject.isActive ? "Aktif" : "Nonaktif"}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1">
+                <MobileDataCard key={subject.id}>
+                  <MobileDataCardHeader
+                    badge={
+                      <span
+                        className={`max-w-full truncate rounded-full px-3 py-1 text-xs font-semibold ${
+                          subject.isActive
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {subject.isActive ? "Aktif" : "Nonaktif"}
+                      </span>
+                    }
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <h3 className="truncate text-lg font-semibold text-slate-950">
+                        {subject.name}
+                      </h3>
+                      <p className="line-clamp-3 text-sm text-slate-600">
+                        {subject.description?.trim()
+                          ? subject.description
+                          : "Belum ada deskripsi singkat untuk mata pelajaran ini."}
+                      </p>
+                    </div>
+                  </MobileDataCardHeader>
+
+                  <div className="mb-4 flex flex-wrap gap-3 text-xs font-medium text-slate-500">
+                    <span className="max-w-full truncate rounded-full bg-slate-100 px-3 py-1">
                       {subject._count.subjectTeachers} guru pengampu
                     </span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1">
+                    <span className="max-w-full truncate rounded-full bg-slate-100 px-3 py-1">
                       {subject._count.questions} soal
                     </span>
                   </div>
@@ -236,12 +444,71 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
                       </ConfirmDeleteButton>
                     </form>
                   </div>
-                </div>
+                </MobileDataCard>
               ))
             )}
           </div>
+
+          <PaginationControls
+            currentPage={safePage}
+            pathname="/admin/mapel"
+            searchParams={tableParams}
+            totalPages={totalPages}
+          />
         </SectionCard>
       </div>
     </div>
   );
+}
+
+function buildPageHref(
+  pathname: string,
+  params: Record<string, string | undefined>,
+) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (!value) {
+      return;
+    }
+
+    searchParams.set(key, value);
+  });
+
+  const query = searchParams.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
+function getSortOrder(order?: string) {
+  return order === "desc" ? "desc" : "asc";
+}
+
+function getSubjectSort(sort?: string) {
+  if (sort === "isActive") {
+    return sort;
+  }
+
+  return "name";
+}
+
+function getSubjectOrderBy(sort: string, order: "asc" | "desc") {
+  if (sort === "isActive") {
+    return {
+      isActive: order,
+    } as const;
+  }
+
+  return {
+    name: order,
+  } as const;
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number) {
+  const parsed = Number.parseInt(value ?? "", 10);
+
+  if (Number.isNaN(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return parsed;
 }

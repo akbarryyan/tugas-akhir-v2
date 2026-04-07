@@ -1,6 +1,6 @@
 import { Role } from "@prisma/client";
 
-import { DashboardShell } from "@/components/auth/dashboard-shell";
+import { AdminDashboardShell } from "@/components/auth/admin-dashboard-shell";
 import { requireRole } from "@/lib/auth/session";
 
 export default async function AdminLayout({
@@ -11,12 +11,11 @@ export default async function AdminLayout({
   const session = await requireRole([Role.ADMIN]);
 
   return (
-    <DashboardShell
-      role={Role.ADMIN}
+    <AdminDashboardShell
       user={session.user}
       description="Kelola data utama, akun pengguna, dan kebutuhan administrasi sekolah secara tertata dari satu portal."
     >
       {children}
-    </DashboardShell>
+    </AdminDashboardShell>
   );
 }

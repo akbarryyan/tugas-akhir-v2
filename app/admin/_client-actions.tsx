@@ -19,6 +19,7 @@ type ConfirmActionButtonProps = {
 
 type ConfirmDeleteButtonProps = {
   children: ReactNode;
+  className?: string;
   confirmMessage: string;
   confirmTitle?: string;
 };
@@ -33,6 +34,7 @@ type ConfirmResetSearchButtonProps = {
   children?: ReactNode;
   confirmMessage?: string;
   confirmTitle?: string;
+  href?: string;
 };
 
 type LoadingSubmitButtonProps = {
@@ -90,6 +92,7 @@ export function ConfirmActionButton({
 
 export function ConfirmDeleteButton({
   children,
+  className,
   confirmMessage,
   confirmTitle = "Konfirmasi Penghapusan",
 }: ConfirmDeleteButtonProps) {
@@ -99,7 +102,10 @@ export function ConfirmDeleteButton({
       confirmMessage={confirmMessage}
       confirmTitle={confirmTitle}
       variant="danger"
-      className="h-10 rounded-full border border-rose-200 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+      className={
+        className ??
+        "h-10 rounded-full border border-rose-200 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+      }
     >
       {children}
     </ConfirmActionButton>
@@ -140,6 +146,7 @@ export function ConfirmResetSearchButton({
   children = "Reset",
   confirmMessage = "Filter pencarian akan dikembalikan ke keadaan awal.",
   confirmTitle = "Reset Filter Pencarian",
+  href,
 }: ConfirmResetSearchButtonProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -155,7 +162,7 @@ export function ConfirmResetSearchButton({
           message: "Filter pencarian telah dikembalikan.",
           type: "info",
         });
-        router.push(pathname);
+        router.push(href ?? pathname);
       }}
       className="inline-flex h-11 items-center rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
     >
@@ -209,7 +216,7 @@ export function LoadingSubmitButton({
   );
 }
 
-export function ResetSearchButton() {
+export function ResetSearchButton({ href }: { href?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const { showToast } = useToast();
@@ -222,7 +229,7 @@ export function ResetSearchButton() {
           message: "Filter pencarian telah dikembalikan.",
           type: "info",
         });
-        router.push(pathname);
+        router.push(href ?? pathname);
       }}
       className="inline-flex h-11 items-center rounded-full border border-slate-200 px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
     >
