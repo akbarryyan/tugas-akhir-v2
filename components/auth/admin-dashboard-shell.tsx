@@ -45,6 +45,7 @@ export function AdminDashboardShell({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const currentTitle = pageTitleByPath[pathname] ?? "Panel Administrasi";
+  const isCompactSidebar = isSidebarCollapsed && !isSidebarOpen;
   const sidebarWidth = isSidebarCollapsed ? "116px" : "292px";
 
   useEffect(() => {
@@ -61,6 +62,19 @@ export function AdminDashboardShell({
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!isSidebarOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isSidebarOpen]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -82,33 +96,37 @@ export function AdminDashboardShell({
           type="button"
           aria-label="Tutup navigasi"
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-50 bg-slate-950/55 opacity-100 backdrop-blur-[3px] transition-opacity duration-300 lg:hidden"
         />
       ) : null}
 
       <div
-        className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-5 px-4 py-4 sm:px-6 lg:grid lg:gap-6 lg:px-6 lg:py-6 lg:[grid-template-columns:var(--sidebar-width)_minmax(0,1fr)]"
+        className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-4 overflow-x-clip px-3 py-3 sm:px-5 sm:py-4 lg:grid lg:gap-6 lg:px-6 lg:py-6 lg:[grid-template-columns:var(--sidebar-width)_minmax(0,1fr)]"
         style={{ "--sidebar-width": sidebarWidth } as CSSProperties}
       >
         <aside
-          className={`fixed inset-y-4 left-4 z-40 w-[min(360px,calc(100vw-2rem))] rounded-[2rem] border border-white/70 bg-slate-950 text-white shadow-[0_28px_80px_rgba(15,23,42,0.22)] transition-[transform,opacity] duration-200 ease-out lg:sticky lg:top-6 lg:z-auto lg:h-[calc(100vh-3rem)] lg:w-auto lg:translate-x-0 lg:opacity-100 ${
+          className={`fixed inset-x-3 bottom-3 top-[6.25rem] z-[60] overflow-hidden rounded-[2rem] border border-white/70 bg-slate-950 text-white shadow-[0_28px_80px_rgba(15,23,42,0.28)] transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-6 lg:z-auto lg:h-[calc(100vh-3rem)] lg:max-h-none lg:w-auto lg:translate-x-0 lg:translate-y-0 lg:overflow-visible lg:shadow-[0_28px_80px_rgba(15,23,42,0.22)] ${
             isSidebarOpen
-              ? "translate-x-0 opacity-100"
-              : "-translate-x-[110%] opacity-0 lg:opacity-100"
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-[110%] opacity-0 lg:pointer-events-auto lg:opacity-100"
           }`}
         >
-          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem]">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] bg-slate-950">
             <div
-              className={`border-b border-white/10 pb-5 pt-6 transition-[padding] duration-200 ease-out ${
-                isSidebarCollapsed ? "lg:px-4" : "px-6 lg:px-6"
+              className={`border-b border-white/10 pb-4 pt-4 transition-[padding] duration-200 ease-out sm:pb-5 sm:pt-6 ${
+                isCompactSidebar ? "lg:px-4" : "px-5 sm:px-6 lg:px-6"
               }`}
             >
+              <div className="mb-4 flex justify-center lg:hidden">
+                <div className="h-1.5 w-14 rounded-full bg-white/20" />
+              </div>
+
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1 overflow-hidden">
                   <div className="inline-flex rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-200">
                     <span
                       className={`inline-block whitespace-nowrap transition-[opacity,max-width,transform] duration-200 ${
-                        isSidebarCollapsed
+                        isCompactSidebar
                           ? "lg:max-w-0 lg:-translate-x-2 lg:opacity-0"
                           : "max-w-[180px] translate-x-0 opacity-100"
                       }`}
@@ -119,7 +137,7 @@ export function AdminDashboardShell({
 
                   <div
                     className={`origin-top overflow-hidden transition-[max-height,opacity,transform,margin] duration-200 ease-out ${
-                      isSidebarCollapsed
+                      isCompactSidebar
                         ? "lg:mt-0 lg:max-h-0 lg:-translate-y-2 lg:opacity-0"
                         : "mt-5 max-h-52 translate-y-0 opacity-100"
                     }`}
@@ -154,7 +172,7 @@ export function AdminDashboardShell({
 
               <div
                 className={`hidden justify-center overflow-hidden transition-[max-height,opacity,margin] duration-200 ease-out lg:flex ${
-                  isSidebarCollapsed
+                  isCompactSidebar
                     ? "lg:mt-3 lg:max-h-16 lg:opacity-100"
                     : "lg:mt-0 lg:max-h-0 lg:opacity-0"
                 }`}
@@ -166,19 +184,19 @@ export function AdminDashboardShell({
             </div>
 
             <div
-              className={`flex min-h-0 flex-1 flex-col py-4 transition-[padding] duration-200 ease-out ${
-                isSidebarCollapsed ? "lg:px-3" : "px-4 lg:px-4"
+              className={`flex min-h-0 flex-1 flex-col py-3 transition-[padding] duration-200 ease-out sm:py-4 ${
+                isCompactSidebar ? "lg:px-3" : "px-4 lg:px-4"
               }`}
             >
               <div
                 className={`px-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 ${
-                  isSidebarCollapsed ? "lg:text-center" : ""
+                  isCompactSidebar ? "lg:text-center" : ""
                 }`}
               >
-                {isSidebarCollapsed ? "Menu" : "Navigasi Utama"}
+                {isCompactSidebar ? "Menu" : "Navigasi Utama"}
               </div>
 
-              <nav className="no-scrollbar mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+              <nav className="no-scrollbar mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 pb-4">
                 <div className="grid gap-2">
                   {navigationItems.map((item) => {
                     const Icon = item.icon;
@@ -188,7 +206,7 @@ export function AdminDashboardShell({
 
                     return (
                       <div key={item.href} className="group relative">
-                        {isSidebarCollapsed ? (
+                        {isCompactSidebar ? (
                           <Link
                             href={item.href}
                             onClick={() => setIsSidebarOpen(false)}
@@ -213,7 +231,7 @@ export function AdminDashboardShell({
                           <Link
                             href={item.href}
                             onClick={() => setIsSidebarOpen(false)}
-                            className={`flex min-w-0 gap-3 rounded-[1.35rem] px-4 py-3 transition-all duration-200 ${
+                            className={`flex min-w-0 gap-3 rounded-[1.35rem] px-3.5 py-3 transition-all duration-200 sm:px-4 ${
                               isActive
                                 ? "bg-white text-slate-950 shadow-[0_16px_40px_rgba(15,23,42,0.18)]"
                                 : "text-slate-300 hover:bg-white/8 hover:text-white"
@@ -243,7 +261,7 @@ export function AdminDashboardShell({
                           </Link>
                         )}
 
-                        {isSidebarCollapsed ? (
+                        {isCompactSidebar ? (
                           <div className="pointer-events-none absolute left-[calc(100%+0.75rem)] top-1/2 hidden -translate-y-1/2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 opacity-0 shadow-[0_18px_44px_rgba(15,23,42,0.14)] transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
                             {item.label}
                           </div>
@@ -255,10 +273,10 @@ export function AdminDashboardShell({
               </nav>
             </div>
 
-            <div className="border-t border-white/10 px-4 py-4">
+            <div className="shrink-0 border-t border-white/10 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4">
               <SignOutButton
                 className={`w-full rounded-full border border-white/12 bg-white/8 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-60 ${
-                  isSidebarCollapsed ? "lg:px-0" : "px-4"
+                  isCompactSidebar ? "lg:px-0" : "px-4"
                 }`}
                 pendingLabel="Keluar..."
               />
@@ -267,30 +285,34 @@ export function AdminDashboardShell({
         </aside>
 
         <div className="min-w-0">
-          <div className="sticky top-0 z-30 isolate pb-4 pt-4 lg:pt-6">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-4 bg-[radial-gradient(circle_at_top_left,_rgba(129,140,248,0.18),_transparent_28%),linear-gradient(180deg,#eef2ff_0%,#f8fafc_22%,#f8fafc_100%)] lg:h-6" />
+          <div
+            className={`sticky top-0 isolate pb-3 pt-3 lg:pb-4 lg:pt-6 ${
+              isSidebarOpen ? "z-20 lg:z-30" : "z-30"
+            }`}
+          >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-3 bg-[radial-gradient(circle_at_top_left,_rgba(129,140,248,0.18),_transparent_28%),linear-gradient(180deg,#eef2ff_0%,#f8fafc_22%,#f8fafc_100%)] lg:h-6" />
             <header
-              className={`relative rounded-[1.6rem] border border-slate-200/90 bg-white px-5 py-4 transition-shadow duration-200 ${
+              className={`relative rounded-[1.45rem] border border-slate-200/90 bg-white px-4 py-3.5 transition-shadow duration-200 sm:px-5 sm:py-4 ${
                 isScrolled
                   ? "shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
                   : "shadow-none"
               }`}
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-3">
+                <div className="min-w-0 space-y-2.5 sm:space-y-3">
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setIsSidebarOpen(true)}
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition hover:border-indigo-200 hover:text-indigo-700 lg:hidden"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition hover:border-indigo-200 hover:text-indigo-700 lg:hidden"
                     >
                       <MenuIcon />
                     </button>
+                    <p className="truncate text-[11px] font-semibold uppercase tracking-[0.24em] text-indigo-600 sm:text-xs">
+                      Panel Administrasi
+                    </p>
                   </div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600">
-                    Panel Administrasi
-                  </p>
-                  <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
+                  <h2 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
                     {currentTitle}
                   </h2>
                   <p className="text-sm leading-6 text-slate-600">
@@ -298,22 +320,26 @@ export function AdminDashboardShell({
                   </p>
                 </div>
 
-                <div className="flex w-full items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.05)] md:w-auto">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#334155_100%)] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.2)]">
+                <div className="flex w-full min-w-0 items-center gap-3 rounded-[1.25rem] border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] px-3.5 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.05)] sm:px-4 md:w-auto">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#334155_100%)] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.2)] sm:h-11 sm:w-11">
                     {(user.name ?? "A").slice(0, 1).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-950">
                       {user.name ?? "Administrator"}
                     </p>
-                    <p className="text-sm text-slate-500">Administrator Sekolah</p>
+                    <p className="truncate text-sm text-slate-500">
+                      Administrator Sekolah
+                    </p>
                   </div>
                 </div>
               </div>
             </header>
           </div>
 
-          <main className="relative z-0 pb-4 pt-5 lg:pt-4">{children}</main>
+          <main className="relative z-0 min-w-0 overflow-x-clip pb-4 pt-4 lg:pt-4">
+            {children}
+          </main>
         </div>
       </div>
     </div>

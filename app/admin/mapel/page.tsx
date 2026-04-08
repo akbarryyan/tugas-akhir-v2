@@ -4,6 +4,7 @@ import {
   toggleSubjectStatusAction,
   updateSubjectAction,
 } from "@/app/admin/_actions";
+import { LiveFilters } from "@/app/admin/_live-filters";
 import {
   AdminEmptyState,
   DesktopTable,
@@ -17,7 +18,6 @@ import {
   MobileDataCardHeader,
   PageIntro,
   PaginationControls,
-  SearchToolbar,
   SectionCard,
   SortableHeaderLink,
   StatusAlert,
@@ -31,6 +31,7 @@ import {
   ConfirmDeleteButton,
   LoadingSubmitButton,
 } from "@/app/admin/_client-actions";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
 type MapelPageProps = {
@@ -38,6 +39,7 @@ type MapelPageProps = {
     message?: string;
     order?: string;
     page?: string;
+    field?: string;
     q?: string;
     sort?: string;
     type?: string;
@@ -49,32 +51,27 @@ const PAGE_SIZE = 8;
 export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams?.q?.trim();
+  const searchField = getSubjectSearchField(resolvedSearchParams?.field);
   const currentPage = parsePositiveInt(resolvedSearchParams?.page, 1);
   const sort = getSubjectSort(resolvedSearchParams?.sort);
   const order = getSortOrder(resolvedSearchParams?.order);
 
-  const where = query
-    ? {
-        OR: [
-          {
-            description: {
-              contains: query,
-            },
-          },
-          {
-            name: {
-              contains: query,
-            },
-          },
-        ],
-      }
-    : undefined;
+  const where = buildSubjectWhere(query, searchField);
 
   const totalSubjects = await prisma.subject.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalSubjects / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
 
-  const subjects = await prisma.subject.findMany({
+  const subjects: Prisma.SubjectGetPayload<{
+    include: {
+      _count: {
+        select: {
+          questions: true;
+          subjectTeachers: true;
+        };
+      };
+    };
+  }>[] = await prisma.subject.findMany({
     include: {
       _count: {
         select: {
@@ -90,14 +87,11 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
   });
 
   const tableParams = {
+    field: searchField === "all" ? undefined : searchField,
     order,
     q: query,
     sort,
   };
-  const resetHref = buildPageHref("/admin/mapel", {
-    order,
-    sort,
-  });
 
   return (
     <div className="space-y-8 overflow-x-clip">
@@ -109,12 +103,16 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
 
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
 
-      <SearchToolbar
-        confirmReset
-        params={tableParams}
+      <LiveFilters
+        field={searchField}
+        options={[
+          { label: "Semua Data", value: "all" },
+          { label: "Nama Mata Pelajaran", value: "name" },
+          { label: "Deskripsi", value: "description" },
+          { label: "Status", value: "isActive" },
+        ]}
         query={query}
         placeholder="Cari nama atau deskripsi mata pelajaran"
-        resetHref={resetHref}
       />
 
       <div className="space-y-6">
@@ -175,13 +173,16 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
               <AdminEmptyState message="Belum ada mata pelajaran." />
             ) : (
               <DesktopTable minWidthClassName="min-w-[980px]">
-                <DesktopTableHeaderRow columnsClassName="grid-cols-[0.9fr_1.2fr_0.8fr_auto]">
+                <DesktopTableHeaderRow columnsClassName="grid-cols-[0.9fr_1.2fr_0.8fr_9.5rem]">
                   <SortableHeaderLink
                     currentOrder={order}
                     currentSort={sort}
                     label="Mata Pelajaran"
                     pathname="/admin/mapel"
-                    searchParams={{ q: query }}
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="name"
                   />
                   <span>Deskripsi</span>
@@ -190,7 +191,10 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
                     currentSort={sort}
                     label="Status"
                     pathname="/admin/mapel"
-                    searchParams={{ q: query }}
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="isActive"
                   />
                   <DesktopTableActionHeader>Aksi</DesktopTableActionHeader>
@@ -200,7 +204,7 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
                   {subjects.map((subject) => (
                     <DesktopTableRow
                       key={subject.id}
-                      columnsClassName="grid-cols-[0.9fr_1.2fr_0.8fr_auto]"
+                      columnsClassName="grid-cols-[0.9fr_1.2fr_0.8fr_9.5rem]"
                     >
                           <label className="grid gap-1.5 text-sm font-medium text-slate-700">
                             <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -461,26 +465,20 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
   );
 }
 
-function buildPageHref(
-  pathname: string,
-  params: Record<string, string | undefined>,
-) {
-  const searchParams = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (!value) {
-      return;
-    }
-
-    searchParams.set(key, value);
-  });
-
-  const query = searchParams.toString();
-  return query ? `${pathname}?${query}` : pathname;
-}
-
 function getSortOrder(order?: string) {
   return order === "desc" ? "desc" : "asc";
+}
+
+function getSubjectSearchField(field?: string) {
+  if (
+    field === "description" ||
+    field === "isActive" ||
+    field === "name"
+  ) {
+    return field;
+  }
+
+  return "all";
 }
 
 function getSubjectSort(sort?: string) {
@@ -501,6 +499,59 @@ function getSubjectOrderBy(sort: string, order: "asc" | "desc") {
   return {
     name: order,
   } as const;
+}
+
+function buildSubjectWhere(
+  query: string | undefined,
+  field: "all" | "description" | "isActive" | "name",
+): Prisma.SubjectWhereInput | undefined {
+  if (!query) {
+    return undefined;
+  }
+
+  if (field === "name") {
+    return {
+      name: {
+        contains: query,
+      },
+    };
+  }
+
+  if (field === "description") {
+    return {
+      description: {
+        contains: query,
+      },
+    };
+  }
+
+  if (field === "isActive") {
+    const normalizedQuery = query.toLowerCase();
+    const shouldBeActive =
+      normalizedQuery.includes("aktif") ||
+      normalizedQuery.includes("active") ||
+      normalizedQuery === "1" ||
+      normalizedQuery === "true";
+
+    return {
+      isActive: shouldBeActive,
+    };
+  }
+
+  return {
+    OR: [
+      {
+        description: {
+          contains: query,
+        },
+      },
+      {
+        name: {
+          contains: query,
+        },
+      },
+    ],
+  };
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number) {

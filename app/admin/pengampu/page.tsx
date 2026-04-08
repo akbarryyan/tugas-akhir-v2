@@ -2,6 +2,7 @@ import {
   assignTeacherAction,
   deleteAssignmentAction,
 } from "@/app/admin/_actions";
+import { LiveFilters } from "@/app/admin/_live-filters";
 import {
   AdminEmptyState,
   DesktopTable,
@@ -25,13 +26,16 @@ import {
   ConfirmDeleteButton,
   LoadingSubmitButton,
 } from "@/app/admin/_client-actions";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
 type PengampuPageProps = {
   searchParams?: Promise<{
+    field?: string;
     message?: string;
     order?: string;
     page?: string;
+    q?: string;
     sort?: string;
     type?: string;
   }>;
@@ -43,9 +47,12 @@ export default async function PengampuAdminPage({
   searchParams,
 }: PengampuPageProps) {
   const resolvedSearchParams = await searchParams;
+  const query = resolvedSearchParams?.q?.trim();
+  const searchField = getAssignmentSearchField(resolvedSearchParams?.field);
   const currentPage = parsePositiveInt(resolvedSearchParams?.page, 1);
   const sort = getAssignmentSort(resolvedSearchParams?.sort);
   const order = getSortOrder(resolvedSearchParams?.order);
+  const where = buildAssignmentWhere(query, searchField);
 
   const [teachers, subjects, totalAssignments] = await Promise.all([
     prisma.teacherProfile.findMany({
@@ -63,11 +70,22 @@ export default async function PengampuAdminPage({
         name: "asc",
       },
     }),
-    prisma.subjectTeacher.count(),
+    prisma.subjectTeacher.count({
+      where,
+    }),
   ]);
   const totalPages = Math.max(1, Math.ceil(totalAssignments / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
-  const assignments = await prisma.subjectTeacher.findMany({
+  const assignments: Prisma.SubjectTeacherGetPayload<{
+    include: {
+      subject: true;
+      teacher: {
+        include: {
+          user: true;
+        };
+      };
+    };
+  }>[] = await prisma.subjectTeacher.findMany({
     include: {
       subject: true,
       teacher: {
@@ -79,9 +97,12 @@ export default async function PengampuAdminPage({
     orderBy: getAssignmentOrderBy(sort, order),
     skip: (safePage - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
+    where,
   });
   const tableParams = {
+    field: searchField === "all" ? undefined : searchField,
     order,
+    q: query,
     sort,
   };
 
@@ -94,6 +115,18 @@ export default async function PengampuAdminPage({
       />
 
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
+
+      <LiveFilters
+        field={searchField}
+        options={[
+          { label: "Semua Data", value: "all" },
+          { label: "Mata Pelajaran", value: "subject" },
+          { label: "Guru", value: "teacher" },
+          { label: "NIP", value: "nip" },
+        ]}
+        query={query}
+        placeholder="Cari mata pelajaran, nama guru, atau NIP"
+      />
 
       <div className="space-y-6">
         <SectionCard
@@ -168,6 +201,10 @@ export default async function PengampuAdminPage({
                     currentSort={sort}
                     label="Mata Pelajaran"
                     pathname="/admin/pengampu"
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="subject"
                   />
                   <SortableHeaderLink
@@ -175,6 +212,10 @@ export default async function PengampuAdminPage({
                     currentSort={sort}
                     label="Guru"
                     pathname="/admin/pengampu"
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="teacher"
                   />
                   <SortableHeaderLink
@@ -182,6 +223,10 @@ export default async function PengampuAdminPage({
                     currentSort={sort}
                     label="NIP"
                     pathname="/admin/pengampu"
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="nip"
                   />
                   <DesktopTableActionHeader>Aksi</DesktopTableActionHeader>
@@ -214,15 +259,18 @@ export default async function PengampuAdminPage({
                         <form action={deleteAssignmentAction}>
                           <input
                             type="hidden"
-                              name="assignmentId"
-                              value={assignment.id}
-                            />
+                            name="assignmentId"
+                            value={assignment.id}
+                          />
                           <ConfirmDeleteButton
                             className="rounded-2xl"
                             confirmTitle="Hapus Penugasan Pengampu"
                             confirmMessage="Penugasan guru pengampu ini akan dihapus dari daftar."
                           >
-                            <TableIconButton title="Hapus penugasan pengampu" variant="danger">
+                            <TableIconButton
+                              title="Hapus penugasan pengampu"
+                              variant="danger"
+                            >
                               <TrashIcon />
                               <span className="sr-only">Hapus</span>
                             </TableIconButton>
@@ -310,6 +358,99 @@ function getAssignmentSort(sort?: string) {
   }
 
   return "teacher";
+}
+
+function getAssignmentSearchField(field?: string) {
+  if (field === "nip" || field === "subject" || field === "teacher") {
+    return field;
+  }
+
+  return "all";
+}
+
+function buildAssignmentWhere(
+  query: string | undefined,
+  field: "all" | "nip" | "subject" | "teacher",
+): Prisma.SubjectTeacherWhereInput | undefined {
+  if (!query) {
+    return undefined;
+  }
+
+  if (field === "subject") {
+    return {
+      subject: {
+        is: {
+          name: {
+            contains: query,
+          },
+        },
+      },
+    };
+  }
+
+  if (field === "teacher") {
+    return {
+      teacher: {
+        is: {
+          user: {
+            is: {
+              name: {
+                contains: query,
+              },
+            },
+          },
+        },
+      },
+    };
+  }
+
+  if (field === "nip") {
+    return {
+      teacher: {
+        is: {
+          nip: {
+            contains: query,
+          },
+        },
+      },
+    };
+  }
+
+  return {
+    OR: [
+      {
+        subject: {
+          is: {
+            name: {
+              contains: query,
+            },
+          },
+        },
+      },
+      {
+        teacher: {
+          is: {
+            user: {
+              is: {
+                name: {
+                  contains: query,
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        teacher: {
+          is: {
+            nip: {
+              contains: query,
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 function getAssignmentOrderBy(sort: string, order: "asc" | "desc") {

@@ -1,5 +1,6 @@
+import Link from "next/link";
+
 import {
-  AdminLinkCard,
   AdminStatCard,
   PageIntro,
   SectionCard,
@@ -14,6 +15,36 @@ export default async function AdminPage() {
       prisma.subject.count(),
       prisma.subjectTeacher.count(),
     ]);
+  const summaryRows = [
+    {
+      href: "/admin/guru",
+      label: "Data Guru",
+      note: "Kelola akun guru beserta identitas pengajar yang aktif di sistem.",
+      total: teacherCount,
+      unit: "data",
+    },
+    {
+      href: "/admin/siswa",
+      label: "Data Siswa",
+      note: "Pantau data siswa dan NISN yang digunakan untuk masuk ke sistem.",
+      total: studentCount,
+      unit: "data",
+    },
+    {
+      href: "/admin/mapel",
+      label: "Mata Pelajaran",
+      note: "Tinjau daftar mata pelajaran yang dipakai pada tryout dan evaluasi.",
+      total: subjectCount,
+      unit: "mapel",
+    },
+    {
+      href: "/admin/pengampu",
+      label: "Guru Pengampu",
+      note: "Periksa penetapan guru pengampu untuk setiap mata pelajaran.",
+      total: assignmentCount,
+      unit: "tugas",
+    },
+  ];
 
   return (
     <div className="space-y-8">
@@ -51,34 +82,71 @@ export default async function AdminPage() {
       </section>
 
       <SectionCard
-        title="Akses Cepat Administrasi"
-        description="Gunakan pintasan berikut untuk masuk ke area kerja yang paling sering dipakai dalam pengelolaan data utama."
+        title="Ringkasan Data"
+        description="Pantau data utama yang dikelola dalam sistem administrasi sekolah melalui ringkasan yang tersusun langsung dalam daftar data."
       >
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          <AdminLinkCard
-            href="/admin/guru"
-            title="Data Guru"
-            metric={`${teacherCount} data`}
-            description="Tambah, perbarui, dan hapus data guru beserta akun masuknya."
-          />
-          <AdminLinkCard
-            href="/admin/siswa"
-            title="Data Siswa"
-            metric={`${studentCount} data`}
-            description="Kelola data siswa dan NISN yang digunakan untuk masuk ke sistem."
-          />
-          <AdminLinkCard
-            href="/admin/mapel"
-            title="Mata Pelajaran"
-            metric={`${subjectCount} mapel`}
-            description="Atur daftar mata pelajaran yang digunakan pada kegiatan tryout."
-          />
-          <AdminLinkCard
-            href="/admin/pengampu"
-            title="Guru Pengampu"
-            metric={`${assignmentCount} tugas`}
-            description="Tetapkan guru pengampu untuk setiap mata pelajaran yang tersedia."
-          />
+        <div className="hidden overflow-hidden rounded-[1.5rem] border border-slate-200/80 lg:block">
+          <div className="grid grid-cols-[1.1fr_2fr_0.7fr_auto] gap-4 border-b border-slate-200/80 bg-slate-50/85 px-5 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <span>Data</span>
+            <span>Keterangan</span>
+            <span>Total</span>
+            <span className="text-right">Halaman</span>
+          </div>
+          <div className="divide-y divide-slate-200/80 bg-white/88">
+            {summaryRows.map((row) => (
+              <div
+                key={row.href}
+                className="grid grid-cols-[1.1fr_2fr_0.7fr_auto] items-center gap-4 px-5 py-4"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-950">
+                    {row.label}
+                  </p>
+                </div>
+                <p className="text-sm leading-6 text-slate-600">{row.note}</p>
+                <div className="text-sm font-semibold text-slate-950">
+                  {row.total} {row.unit}
+                </div>
+                <div className="text-right">
+                  <Link
+                    href={row.href}
+                    className="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                  >
+                    Lihat Data
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:hidden">
+          {summaryRows.map((row) => (
+            <div
+              key={row.href}
+              className="rounded-[1.5rem] border border-slate-200/80 bg-white/88 p-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-base font-semibold text-slate-950">
+                    {row.label}
+                  </h3>
+                  <p className="text-sm leading-6 text-slate-600">{row.note}</p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {row.total} {row.unit}
+                </span>
+              </div>
+              <div className="mt-4">
+                <Link
+                  href={row.href}
+                  className="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                >
+                  Lihat Data
+                </Link>
+              </div>
+            </div>
+          ))}
         </div>
       </SectionCard>
     </div>

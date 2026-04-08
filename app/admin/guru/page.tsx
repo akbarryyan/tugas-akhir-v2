@@ -3,6 +3,7 @@ import {
   deleteTeacherAction,
   updateTeacherAction,
 } from "@/app/admin/_actions";
+import { TeacherFilters } from "@/app/admin/guru/_teacher-filters";
 import {
   AdminEmptyState,
   DesktopTable,
@@ -16,7 +17,6 @@ import {
   MobileDataCardHeader,
   PageIntro,
   PaginationControls,
-  SearchToolbar,
   SectionCard,
   SortableHeaderLink,
   StatusAlert,
@@ -28,6 +28,7 @@ import {
   ConfirmDeleteButton,
   LoadingSubmitButton,
 } from "@/app/admin/_client-actions";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
 type GuruPageProps = {
@@ -35,6 +36,7 @@ type GuruPageProps = {
     message?: string;
     order?: string;
     page?: string;
+    field?: string;
     q?: string;
     sort?: string;
     type?: string;
@@ -46,45 +48,20 @@ const PAGE_SIZE = 8;
 export default async function GuruAdminPage({ searchParams }: GuruPageProps) {
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams?.q?.trim();
+  const searchField = getTeacherSearchField(resolvedSearchParams?.field);
   const currentPage = parsePositiveInt(resolvedSearchParams?.page, 1);
   const sort = getTeacherSort(resolvedSearchParams?.sort);
   const order = getSortOrder(resolvedSearchParams?.order);
 
-  const where = query
-    ? {
-        OR: [
-          {
-            nip: {
-              contains: query,
-            },
-          },
-          {
-            user: {
-              is: {
-                email: {
-                  contains: query,
-                },
-              },
-            },
-          },
-          {
-            user: {
-              is: {
-                name: {
-                  contains: query,
-                },
-              },
-            },
-          },
-        ],
-      }
-    : undefined;
+  const where = buildTeacherWhere(query, searchField);
 
   const totalTeachers = await prisma.teacherProfile.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalTeachers / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
 
-  const teachers = await prisma.teacherProfile.findMany({
+  const teachers: Prisma.TeacherProfileGetPayload<{
+    include: { user: true };
+  }>[] = await prisma.teacherProfile.findMany({
     include: {
       user: true,
     },
@@ -95,14 +72,11 @@ export default async function GuruAdminPage({ searchParams }: GuruPageProps) {
   });
 
   const tableParams = {
+    field: searchField === "all" ? undefined : searchField,
     order,
     q: query,
     sort,
   };
-  const resetHref = buildPageHref("/admin/guru", {
-    order,
-    sort,
-  });
 
   return (
     <div className="space-y-8 overflow-x-clip">
@@ -114,11 +88,9 @@ export default async function GuruAdminPage({ searchParams }: GuruPageProps) {
 
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
 
-      <SearchToolbar
-        params={tableParams}
+      <TeacherFilters
+        field={searchField}
         query={query}
-        placeholder="Cari nama guru, email, atau NIP"
-        resetHref={resetHref}
       />
 
       <div className="space-y-6">
@@ -192,13 +164,16 @@ export default async function GuruAdminPage({ searchParams }: GuruPageProps) {
               <AdminEmptyState message="Belum ada data guru." />
             ) : (
               <DesktopTable minWidthClassName="min-w-[980px]">
-                <DesktopTableHeaderRow columnsClassName="grid-cols-[1.1fr_1.2fr_0.9fr_1fr_auto]">
+                <DesktopTableHeaderRow columnsClassName="grid-cols-[1.1fr_1.2fr_0.9fr_1fr_9.5rem]">
                   <SortableHeaderLink
                     currentOrder={order}
                     currentSort={sort}
                     label="Nama Guru"
                     pathname="/admin/guru"
-                    searchParams={{ q: query }}
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="name"
                   />
                   <SortableHeaderLink
@@ -206,7 +181,10 @@ export default async function GuruAdminPage({ searchParams }: GuruPageProps) {
                     currentSort={sort}
                     label="Email"
                     pathname="/admin/guru"
-                    searchParams={{ q: query }}
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="email"
                   />
                   <SortableHeaderLink
@@ -214,7 +192,10 @@ export default async function GuruAdminPage({ searchParams }: GuruPageProps) {
                     currentSort={sort}
                     label="NIP"
                     pathname="/admin/guru"
-                    searchParams={{ q: query }}
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="nip"
                   />
                   <span>Password Baru</span>
@@ -225,7 +206,7 @@ export default async function GuruAdminPage({ searchParams }: GuruPageProps) {
                   {teachers.map((teacher) => (
                     <DesktopTableRow
                       key={teacher.id}
-                      columnsClassName="grid-cols-[1.1fr_1.2fr_0.9fr_1fr_auto]"
+                      columnsClassName="grid-cols-[1.1fr_1.2fr_0.9fr_1fr_9.5rem]"
                     >
                           <label className="grid gap-1.5 text-sm font-medium text-slate-700">
                             <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -440,26 +421,16 @@ export default async function GuruAdminPage({ searchParams }: GuruPageProps) {
   );
 }
 
-function buildPageHref(
-  pathname: string,
-  params: Record<string, string | undefined>,
-) {
-  const searchParams = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (!value) {
-      return;
-    }
-
-    searchParams.set(key, value);
-  });
-
-  const query = searchParams.toString();
-  return query ? `${pathname}?${query}` : pathname;
-}
-
 function getSortOrder(order?: string) {
   return order === "desc" ? "desc" : "asc";
+}
+
+function getTeacherSearchField(field?: string) {
+  if (field === "email" || field === "name" || field === "nip") {
+    return field;
+  }
+
+  return "all";
 }
 
 function getTeacherSort(sort?: string) {
@@ -490,6 +461,75 @@ function getTeacherOrderBy(sort: string, order: "asc" | "desc") {
       name: order,
     },
   } as const;
+}
+
+function buildTeacherWhere(
+  query: string | undefined,
+  field: "all" | "email" | "name" | "nip",
+): Prisma.TeacherProfileWhereInput | undefined {
+  if (!query) {
+    return undefined;
+  }
+
+  if (field === "nip") {
+    return {
+      nip: {
+        contains: query,
+      },
+    };
+  }
+
+  if (field === "email") {
+    return {
+      user: {
+        is: {
+          email: {
+            contains: query,
+          },
+        },
+      },
+    };
+  }
+
+  if (field === "name") {
+    return {
+      user: {
+        is: {
+          name: {
+            contains: query,
+          },
+        },
+      },
+    };
+  }
+
+  return {
+    OR: [
+      {
+        nip: {
+          contains: query,
+        },
+      },
+      {
+        user: {
+          is: {
+            email: {
+              contains: query,
+            },
+          },
+        },
+      },
+      {
+        user: {
+          is: {
+            name: {
+              contains: query,
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number) {

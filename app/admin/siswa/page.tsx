@@ -3,6 +3,7 @@ import {
   deleteStudentAction,
   updateStudentAction,
 } from "@/app/admin/_actions";
+import { LiveFilters } from "@/app/admin/_live-filters";
 import {
   AdminEmptyState,
   DesktopTable,
@@ -16,7 +17,6 @@ import {
   MobileDataCardHeader,
   PageIntro,
   PaginationControls,
-  SearchToolbar,
   SectionCard,
   SortableHeaderLink,
   StatusAlert,
@@ -28,6 +28,7 @@ import {
   ConfirmDeleteButton,
   LoadingSubmitButton,
 } from "@/app/admin/_client-actions";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
 type SiswaPageProps = {
@@ -35,6 +36,7 @@ type SiswaPageProps = {
     message?: string;
     order?: string;
     page?: string;
+    field?: string;
     q?: string;
     sort?: string;
     type?: string;
@@ -46,41 +48,20 @@ const PAGE_SIZE = 8;
 export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams?.q?.trim();
+  const searchField = getStudentSearchField(resolvedSearchParams?.field);
   const currentPage = parsePositiveInt(resolvedSearchParams?.page, 1);
   const sort = getStudentSort(resolvedSearchParams?.sort);
   const order = getSortOrder(resolvedSearchParams?.order);
 
-  const where = query
-    ? {
-        OR: [
-          {
-            className: {
-              contains: query,
-            },
-          },
-          {
-            nisn: {
-              contains: query,
-            },
-          },
-          {
-            user: {
-              is: {
-                name: {
-                  contains: query,
-                },
-              },
-            },
-          },
-        ],
-      }
-    : undefined;
+  const where = buildStudentWhere(query, searchField);
 
   const totalStudents = await prisma.studentProfile.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalStudents / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
 
-  const students = await prisma.studentProfile.findMany({
+  const students: Prisma.StudentProfileGetPayload<{
+    include: { user: true };
+  }>[] = await prisma.studentProfile.findMany({
     include: {
       user: true,
     },
@@ -91,14 +72,11 @@ export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
   });
 
   const tableParams = {
+    field: searchField === "all" ? undefined : searchField,
     order,
     q: query,
     sort,
   };
-  const resetHref = buildPageHref("/admin/siswa", {
-    order,
-    sort,
-  });
 
   return (
     <div className="space-y-8 overflow-x-clip">
@@ -110,11 +88,16 @@ export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
 
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
 
-      <SearchToolbar
-        params={tableParams}
+      <LiveFilters
+        field={searchField}
+        options={[
+          { label: "Semua Data", value: "all" },
+          { label: "Nama Siswa", value: "name" },
+          { label: "NISN", value: "nisn" },
+          { label: "Kelas", value: "className" },
+        ]}
         query={query}
         placeholder="Cari nama siswa, NISN, atau kelas"
-        resetHref={resetHref}
       />
 
       <div className="space-y-6">
@@ -178,13 +161,16 @@ export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
               <AdminEmptyState message="Belum ada data siswa." />
             ) : (
               <DesktopTable minWidthClassName="min-w-[860px]">
-                <DesktopTableHeaderRow columnsClassName="grid-cols-[1fr_0.9fr_0.9fr_auto]">
+                <DesktopTableHeaderRow columnsClassName="grid-cols-[1fr_0.9fr_0.9fr_9.5rem]">
                   <SortableHeaderLink
                     currentOrder={order}
                     currentSort={sort}
                     label="Nama Siswa"
                     pathname="/admin/siswa"
-                    searchParams={{ q: query }}
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="name"
                   />
                   <SortableHeaderLink
@@ -192,7 +178,10 @@ export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
                     currentSort={sort}
                     label="NISN"
                     pathname="/admin/siswa"
-                    searchParams={{ q: query }}
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="nisn"
                   />
                   <SortableHeaderLink
@@ -200,7 +189,10 @@ export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
                     currentSort={sort}
                     label="Kelas"
                     pathname="/admin/siswa"
-                    searchParams={{ q: query }}
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
                     sortKey="className"
                   />
                   <DesktopTableActionHeader>Aksi</DesktopTableActionHeader>
@@ -210,7 +202,7 @@ export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
                   {students.map((student) => (
                     <DesktopTableRow
                       key={student.id}
-                      columnsClassName="grid-cols-[1fr_0.9fr_0.9fr_auto]"
+                      columnsClassName="grid-cols-[1fr_0.9fr_0.9fr_9.5rem]"
                     >
                           <label className="grid gap-1.5 text-sm font-medium text-slate-700">
                             <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -403,26 +395,16 @@ export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
   );
 }
 
-function buildPageHref(
-  pathname: string,
-  params: Record<string, string | undefined>,
-) {
-  const searchParams = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (!value) {
-      return;
-    }
-
-    searchParams.set(key, value);
-  });
-
-  const query = searchParams.toString();
-  return query ? `${pathname}?${query}` : pathname;
-}
-
 function getSortOrder(order?: string) {
   return order === "desc" ? "desc" : "asc";
+}
+
+function getStudentSearchField(field?: string) {
+  if (field === "className" || field === "name" || field === "nisn") {
+    return field;
+  }
+
+  return "all";
 }
 
 function getStudentSort(sort?: string) {
@@ -451,6 +433,67 @@ function getStudentOrderBy(sort: string, order: "asc" | "desc") {
       name: order,
     },
   } as const;
+}
+
+function buildStudentWhere(
+  query: string | undefined,
+  field: "all" | "className" | "name" | "nisn",
+): Prisma.StudentProfileWhereInput | undefined {
+  if (!query) {
+    return undefined;
+  }
+
+  if (field === "nisn") {
+    return {
+      nisn: {
+        contains: query,
+      },
+    };
+  }
+
+  if (field === "className") {
+    return {
+      className: {
+        contains: query,
+      },
+    };
+  }
+
+  if (field === "name") {
+    return {
+      user: {
+        is: {
+          name: {
+            contains: query,
+          },
+        },
+      },
+    };
+  }
+
+  return {
+    OR: [
+      {
+        className: {
+          contains: query,
+        },
+      },
+      {
+        nisn: {
+          contains: query,
+        },
+      },
+      {
+        user: {
+          is: {
+            name: {
+              contains: query,
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number) {

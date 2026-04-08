@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
@@ -43,6 +43,8 @@ type LoadingSubmitButtonProps = {
   loadingMessage: string;
   pendingLabel: string;
 };
+
+const MIN_BUTTON_LOADING_MS = 1100;
 
 export function ConfirmActionButton({
   children,
@@ -180,9 +182,20 @@ export function LoadingSubmitButton({
   const { pending } = useFormStatus();
   const { dismissToast, showToast } = useToast();
   const activeToastIdRef = useRef<string | null>(null);
+  const loadingStartRef = useRef<number | null>(null);
+  const releaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isVisualPending, setIsVisualPending] = useState(false);
 
   useEffect(() => {
     if (pending && !activeToastIdRef.current) {
+      loadingStartRef.current = Date.now();
+      setIsVisualPending(true);
+
+      if (releaseTimeoutRef.current) {
+        clearTimeout(releaseTimeoutRef.current);
+        releaseTimeoutRef.current = null;
+      }
+
       activeToastIdRef.current = showToast({
         duration: undefined,
         message: loadingMessage,
@@ -194,6 +207,23 @@ export function LoadingSubmitButton({
     if (!pending && activeToastIdRef.current) {
       dismissToast(activeToastIdRef.current);
       activeToastIdRef.current = null;
+
+      const elapsed = loadingStartRef.current
+        ? Date.now() - loadingStartRef.current
+        : MIN_BUTTON_LOADING_MS;
+      const remaining = Math.max(0, MIN_BUTTON_LOADING_MS - elapsed);
+
+      if (remaining === 0) {
+        setIsVisualPending(false);
+        loadingStartRef.current = null;
+        return;
+      }
+
+      releaseTimeoutRef.current = setTimeout(() => {
+        setIsVisualPending(false);
+        loadingStartRef.current = null;
+        releaseTimeoutRef.current = null;
+      }, remaining);
     }
   }, [dismissToast, loadingMessage, pending, showToast]);
 
@@ -202,6 +232,10 @@ export function LoadingSubmitButton({
       if (activeToastIdRef.current) {
         dismissToast(activeToastIdRef.current);
       }
+
+      if (releaseTimeoutRef.current) {
+        clearTimeout(releaseTimeoutRef.current);
+      }
     };
   }, [dismissToast]);
 
@@ -209,9 +243,16 @@ export function LoadingSubmitButton({
     <button
       type="submit"
       className={className}
-      disabled={pending}
+      disabled={pending || isVisualPending}
     >
-      {pending ? pendingLabel : idleLabel}
+      {isVisualPending ? (
+        <span className="inline-flex items-center justify-center gap-2">
+          <SpinnerIcon />
+          {pendingLabel}
+        </span>
+      ) : (
+        idleLabel
+      )}
     </button>
   );
 }
@@ -235,5 +276,30 @@ export function ResetSearchButton({ href }: { href?: string }) {
     >
       Reset
     </button>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 animate-spin"
+      fill="none"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        className="stroke-current/30"
+        strokeWidth="2.5"
+      />
+      <path
+        d="M21 12a9 9 0 0 0-9-9"
+        className="stroke-current"
+        strokeLinecap="round"
+        strokeWidth="2.5"
+      />
+    </svg>
   );
 }

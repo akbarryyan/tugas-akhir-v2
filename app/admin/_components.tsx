@@ -356,7 +356,7 @@ export function DesktopTableActionHeader({
   children: React.ReactNode;
 }) {
   return (
-    <span className="sticky right-0 z-20 bg-slate-50/95 pl-4 text-right">
+    <span className="sticky right-0 z-20 flex h-full w-[9.5rem] min-w-[9.5rem] items-center justify-end bg-slate-50/95 pl-4 text-right">
       {children}
     </span>
   );
@@ -384,7 +384,7 @@ export function DesktopTableActionCell({
 }) {
   return (
     <div
-      className={`sticky right-0 min-w-[96px] bg-white/98 pl-4 ${className}`.trim()}
+      className={`sticky right-0 flex h-full w-[9.5rem] min-w-[9.5rem] items-center justify-end bg-white/98 pl-4 ${className}`.trim()}
     >
       {children}
     </div>
