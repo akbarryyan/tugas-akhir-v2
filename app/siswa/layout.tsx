@@ -1,6 +1,6 @@
 import { Role } from "@prisma/client";
 
-import { DashboardShell } from "@/components/auth/dashboard-shell";
+import { StudentDashboardShell } from "@/components/auth/student-dashboard-shell";
 import { requireRole } from "@/lib/auth/session";
 
 export default async function SiswaLayout({
@@ -11,12 +11,11 @@ export default async function SiswaLayout({
   const session = await requireRole([Role.SISWA]);
 
   return (
-    <DashboardShell
-      role={Role.SISWA}
+    <StudentDashboardShell
       user={session.user}
-      description="Kerjakan tryout, lihat hasilnya, lalu isi tanggapan setelah kegiatan selesai."
+      description="Kelola kegiatan tryoutmu dari satu tempat yang ringan, rapi, dan mudah dipahami."
     >
       {children}
-    </DashboardShell>
+    </StudentDashboardShell>
   );
 }

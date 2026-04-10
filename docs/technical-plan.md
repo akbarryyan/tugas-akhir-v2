@@ -163,13 +163,44 @@ Catatan:
 - Jika nanti ingin tipe soal lebih fleksibel, opsi jawaban bisa dipisah ke tabel `QuestionOption`.
 - Untuk tahap TA, model pilihan ganda sederhana sudah cukup.
 
-#### 7. TryoutSession
-Mewakili satu percobaan tryout siswa pada satu mata pelajaran.
+#### 7. Tryout
+Mewakili satu paket tryout yang dibuat untuk mata pelajaran tertentu.
+
+Field minimum:
+- `id`
+- `subjectId`
+- `createdByTeacherId` opsional
+- `title`
+- `description` opsional
+- `isPublished`
+- `durationMinutes` opsional
+- `createdAt`
+- `updatedAt`
+
+Catatan:
+- Satu mata pelajaran dapat memiliki banyak tryout.
+- Entitas ini menjadi kepala utama untuk paket tryout seperti `Latihan 1`, `Simulasi`, atau `Paket A`.
+
+#### 8. TryoutQuestion
+Relasi soal yang dipakai dalam satu tryout.
+
+Field minimum:
+- `id`
+- `tryoutId`
+- `questionId`
+- `orderNumber`
+
+Catatan:
+- Tabel ini dipakai agar satu tryout bisa memiliki banyak soal.
+- Soal dari bank soal dapat dipakai kembali di tryout yang berbeda.
+
+#### 9. TryoutSession
+Mewakili satu percobaan tryout siswa pada satu paket tryout.
 
 Field minimum:
 - `id`
 - `studentId`
-- `subjectId`
+- `tryoutId`
 - `status` (`IN_PROGRESS`, `SUBMITTED`, `GRADED`)
 - `startedAt`
 - `submittedAt` opsional
@@ -182,7 +213,7 @@ Field minimum:
 Catatan:
 - Entitas ini penting agar histori pengerjaan siswa tersimpan rapi.
 
-#### 8. TryoutAnswer
+#### 10. TryoutAnswer
 Jawaban siswa per soal pada satu sesi tryout.
 
 Field minimum:
@@ -193,7 +224,7 @@ Field minimum:
 - `isCorrect`
 - `answeredAt`
 
-#### 9. LearningAspect
+#### 11. LearningAspect
 Untuk aspek pembelajaran feedback.
 
 Opsi awal:
@@ -204,7 +235,7 @@ Opsi awal:
 Catatan:
 - Bisa berupa enum Prisma, tidak harus tabel terpisah.
 
-#### 10. Feedback
+#### 12. Feedback
 Umpan balik siswa setelah tryout.
 
 Field minimum:
@@ -220,7 +251,7 @@ Catatan:
 - Satu `TryoutSession` dapat memiliki lebih dari satu feedback jika siswa diminta menilai beberapa aspek dalam entri terpisah.
 - Jika ingin satu form berisi banyak aspek sekaligus, maka pisahkan menjadi `FeedbackSubmission` dan `FeedbackItem`. Untuk tahap awal, model satu baris per aspek lebih sederhana.
 
-#### 11. SentimentAnalysis
+#### 13. SentimentAnalysis
 Hasil klasifikasi sentimen dari komentar feedback.
 
 Field minimum:
@@ -242,10 +273,12 @@ Relasi inti:
 - Satu `User` guru dapat punya satu `TeacherProfile`.
 - Satu `User` siswa dapat punya satu `StudentProfile`.
 - Satu `Subject` dapat punya banyak `Question`.
+- Satu `Subject` dapat punya banyak `Tryout`.
 - Satu `Subject` dapat punya banyak relasi `SubjectTeacher`.
 - Satu `TeacherProfile` dapat mengampu banyak `Subject` lewat `SubjectTeacher`.
+- Satu `Tryout` dapat punya banyak `TryoutQuestion`.
+- Satu `Tryout` dapat punya banyak `TryoutSession`.
 - Satu `StudentProfile` dapat punya banyak `TryoutSession`.
-- Satu `TryoutSession` terkait ke satu `Subject`.
 - Satu `TryoutSession` punya banyak `TryoutAnswer`.
 - Satu `TryoutSession` dapat punya banyak `Feedback`.
 - Satu `Feedback` memiliki satu hasil `SentimentAnalysis`.
@@ -254,9 +287,9 @@ Relasi inti:
 
 ### Alur siswa
 1. Siswa login melalui `User`.
-2. Siswa memilih `Subject`.
+2. Siswa memilih `Tryout` yang tersedia.
 3. Sistem membuat `TryoutSession`.
-4. Siswa menjawab beberapa `Question` dan tiap jawaban disimpan ke `TryoutAnswer`.
+4. Sistem mengambil daftar soal dari `TryoutQuestion`, lalu tiap jawaban siswa disimpan ke `TryoutAnswer`.
 5. Saat submit, sistem menghitung nilai dari `TryoutAnswer`, lalu memperbarui `TryoutSession`.
 6. Setelah itu siswa mengirim `Feedback`.
 7. Komentar feedback dikirim ke service NLP.
@@ -266,7 +299,8 @@ Relasi inti:
 1. Guru login.
 2. Guru hanya melihat `Subject` yang terhubung melalui `SubjectTeacher`.
 3. Guru CRUD `Question` pada mata pelajaran yang diampu.
-4. Guru melihat `TryoutSession`, `Feedback`, dan `SentimentAnalysis` untuk mapelnya.
+4. Guru menyusun `Tryout` dan memilih soal melalui `TryoutQuestion`.
+5. Guru melihat `TryoutSession`, `Feedback`, dan `SentimentAnalysis` untuk tryout/mapelnya.
 
 ### Alur admin
 1. Admin login.
