@@ -40,7 +40,10 @@ const navigationByRole: Record<
     { href: "/admin/mapel", label: "Mata Pelajaran" },
     { href: "/admin/pengampu", label: "Guru Pengampu" },
   ],
-  GURU: [{ href: "/guru", label: "Beranda" }],
+  GURU: [
+    { href: "/guru", label: "Beranda" },
+    { href: "/guru/tryout", label: "Tryout" },
+  ],
   SISWA: [{ href: "/siswa", label: "Beranda" }],
 };
 

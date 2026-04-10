@@ -8,12 +8,13 @@ import {
 import { prisma } from "@/lib/db/prisma";
 
 export default async function AdminPage() {
-  const [teacherCount, studentCount, subjectCount, assignmentCount] =
+  const [teacherCount, studentCount, subjectCount, assignmentCount, tryoutCount] =
     await Promise.all([
       prisma.teacherProfile.count(),
       prisma.studentProfile.count(),
       prisma.subject.count(),
       prisma.subjectTeacher.count(),
+      prisma.tryout.count(),
     ]);
   const summaryRows = [
     {
@@ -43,6 +44,13 @@ export default async function AdminPage() {
       note: "Periksa penetapan guru pengampu untuk setiap mata pelajaran.",
       total: assignmentCount,
       unit: "tugas",
+    },
+    {
+      href: "/admin/tryout",
+      label: "Tryout",
+      note: "Pantau paket tryout yang sudah disusun dan dipublikasikan.",
+      total: tryoutCount,
+      unit: "tryout",
     },
   ];
 

@@ -22,6 +22,7 @@ const navigationItems = [
   { href: "/admin/guru", label: "Guru", description: "Kelola akun dan identitas guru.", icon: TeacherIcon },
   { href: "/admin/siswa", label: "Siswa", description: "Atur data siswa dan NISN aktif.", icon: StudentIcon },
   { href: "/admin/mapel", label: "Mata Pelajaran", description: "Kelola daftar mata pelajaran.", icon: SubjectIcon },
+  { href: "/admin/tryout", label: "Tryout", description: "Pantau paket tryout yang tersedia.", icon: ClipboardIcon },
   { href: "/admin/pengampu", label: "Guru Pengampu", description: "Tetapkan guru pengampu.", icon: AssignmentIcon },
 ];
 
@@ -31,6 +32,7 @@ const pageTitleByPath: Record<string, string> = {
   "/admin/mapel": "Kelola Mata Pelajaran",
   "/admin/pengampu": "Kelola Guru Pengampu",
   "/admin/siswa": "Kelola Data Siswa",
+  "/admin/tryout": "Pantau Data Tryout",
 };
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
@@ -405,6 +407,18 @@ function AssignmentIcon() {
       <path d="M4.5 7h.01" />
       <path d="M4.5 12h.01" />
       <path d="M4.5 17h.01" />
+    </svg>
+  );
+}
+
+function ClipboardIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M9 5.5h6" />
+      <path d="M9.5 3.5h5a1.5 1.5 0 0 1 1.5 1.5v1H8V5a1.5 1.5 0 0 1 1.5-1.5Z" />
+      <path d="M7 6.5h10A1.5 1.5 0 0 1 18.5 8v11A1.5 1.5 0 0 1 17 20.5H7A1.5 1.5 0 0 1 5.5 19V8A1.5 1.5 0 0 1 7 6.5Z" />
+      <path d="M8.5 11h7" />
+      <path d="M8.5 15h5" />
     </svg>
   );
 }

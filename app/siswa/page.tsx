@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Prisma, TryoutStatus } from "@prisma/client";
 
 import { getCurrentSession } from "@/lib/auth/session";
@@ -320,12 +321,12 @@ export default async function SiswaPage() {
                       </span>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
+                  <Link
+                    href={`/siswa/tryout/${tryout.id}`}
                     className="mt-5 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
                   >
                     Lihat Tryout
-                  </button>
+                  </Link>
                 </article>
               ))}
             </div>

@@ -1,0 +1,436 @@
+import Link from "next/link";
+import { AnswerOption, TryoutStatus } from "@prisma/client";
+
+import { StatusAlert } from "@/app/admin/_components";
+import { LoadingSubmitButton } from "@/app/admin/_client-actions";
+import { submitTryoutAnswersAction } from "@/app/siswa/tryout/_actions";
+import { getCurrentSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db/prisma";
+
+type SiswaTryoutDetailPageProps = {
+  params: Promise<{
+    id: string;
+  }>;
+  searchParams?: Promise<{
+    message?: string;
+    type?: string;
+  }>;
+};
+
+export default async function SiswaTryoutDetailPage({
+  params,
+  searchParams,
+}: SiswaTryoutDetailPageProps) {
+  const session = await getCurrentSession();
+  const studentUserId = session?.user.id ?? "";
+  const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  const studentProfile = await prisma.studentProfile.findUnique({
+    where: {
+      userId: studentUserId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const tryout = await prisma.tryout.findFirst({
+    where: {
+      id,
+      isPublished: true,
+      subject: {
+        isActive: true,
+      },
+    },
+    include: {
+      subject: {
+        select: {
+          name: true,
+        },
+      },
+      tryoutQuestions: {
+        orderBy: {
+          orderNumber: "asc",
+        },
+        include: {
+          question: {
+            select: {
+              correctOption: true,
+              explanation: true,
+              id: true,
+              optionA: true,
+              optionB: true,
+              optionC: true,
+              optionD: true,
+              questionText: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const latestSession =
+    studentProfile && tryout
+      ? await prisma.tryoutSession.findFirst({
+          where: {
+            studentId: studentProfile.id,
+            tryoutId: tryout.id,
+            status: {
+              in: [TryoutStatus.SUBMITTED, TryoutStatus.GRADED],
+            },
+          },
+          include: {
+            answers: {
+              select: {
+                questionId: true,
+                selectedOption: true,
+                isCorrect: true,
+              },
+            },
+          },
+          orderBy: [
+            {
+              submittedAt: "desc",
+            },
+            {
+              updatedAt: "desc",
+            },
+          ],
+        })
+      : null;
+
+  if (!tryout) {
+    return (
+      <div className="space-y-6">
+        <section className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+            Detail Tryout
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+            Tryout belum tersedia
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+            Tryout yang kamu buka belum dipublikasikan atau sudah tidak tersedia lagi.
+          </p>
+          <Link
+            href="/siswa#tryout"
+            className="mt-6 inline-flex h-11 items-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Kembali ke Beranda Siswa
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
+  const answerMap = new Map(
+    latestSession?.answers.map((answer) => [answer.questionId, answer]) ?? [],
+  );
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-[2rem] border border-white/80 bg-[linear-gradient(135deg,#ffffff_0%,#eef8ff_48%,#f8fdff_100%)] p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
+              <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-700">
+                {tryout.subject.name}
+              </span>
+              <span className="rounded-full bg-white px-3 py-1 text-slate-500">
+                {tryout.tryoutQuestions.length} soal
+              </span>
+              {tryout.durationMinutes ? (
+                <span className="rounded-full bg-white px-3 py-1 text-slate-500">
+                  {tryout.durationMinutes} menit
+                </span>
+              ) : null}
+            </div>
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+                {tryout.title}
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+                {tryout.description?.trim() ||
+                  "Kerjakan tryout ini dengan fokus, lalu kirim semua jawaban saat sudah selesai."}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/siswa#tryout"
+            className="inline-flex h-11 items-center rounded-full border border-sky-200 bg-white px-5 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-50"
+          >
+            Kembali ke Daftar Tryout
+          </Link>
+        </div>
+      </section>
+
+      <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
+
+      {latestSession ? (
+        <section className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <StudentSummaryCard
+              label="Nilai Akhir"
+              value={Number(latestSession.score ?? 0).toFixed(0)}
+              description="Hasil tryout terbaru yang sudah kamu kirim."
+            />
+            <StudentSummaryCard
+              label="Jawaban Benar"
+              value={`${latestSession.correctAnswers}/${latestSession.totalQuestions}`}
+              description="Jumlah soal yang berhasil kamu jawab dengan tepat."
+            />
+            <StudentSummaryCard
+              label="Status"
+              value={latestSession.status === TryoutStatus.GRADED ? "Dinilai" : "Terkirim"}
+              description="Hasil terbaru sudah tercatat pada sistem."
+            />
+          </div>
+
+          <section className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+                  Review Jawaban
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+                  Tinjau hasil tryout terakhirmu
+                </h2>
+              </div>
+              <p className="text-sm text-slate-500">
+                Jawaban berikut menampilkan pilihan yang kamu kirim pada sesi terbaru.
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-4">
+              {tryout.tryoutQuestions.map((item) => {
+                const answer = answerMap.get(item.questionId);
+
+                return (
+                  <article
+                    key={item.id}
+                    className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                        Soal {item.orderNumber}
+                      </span>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          answer?.isCorrect
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
+                        }`}
+                      >
+                        {answer?.isCorrect ? "Jawaban benar" : "Perlu ditinjau lagi"}
+                      </span>
+                    </div>
+
+                    <p className="mt-4 text-sm leading-7 text-slate-800">
+                      {item.question.questionText}
+                    </p>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {(
+                        [
+                          ["A", item.question.optionA],
+                          ["B", item.question.optionB],
+                          ["C", item.question.optionC],
+                          ["D", item.question.optionD],
+                        ] as const
+                      ).map(([option, text]) => (
+                        <ResultOptionCard
+                          key={option}
+                          isCorrectOption={item.question.correctOption === option}
+                          isSelected={answer?.selectedOption === option}
+                          label={option}
+                          text={text}
+                        />
+                      ))}
+                    </div>
+
+                    {item.question.explanation?.trim() ? (
+                      <div className="mt-4 rounded-[1.35rem] border border-sky-100 bg-sky-50/80 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">
+                          Catatan Pembahasan
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-slate-700">
+                          {item.question.explanation}
+                        </p>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </section>
+      ) : (
+        <form action={submitTryoutAnswersAction} className="space-y-5">
+          <input type="hidden" name="tryoutId" value={tryout.id} />
+
+          <section className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+                  Pengerjaan Tryout
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+                  Jawab seluruh soal dengan teliti
+                </h2>
+              </div>
+              <p className="text-sm text-slate-500">
+                Pastikan semua soal sudah terisi sebelum kamu mengirim jawaban.
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-4">
+              {tryout.tryoutQuestions.map((item) => (
+                <article
+                  key={item.id}
+                  className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5"
+                >
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    Soal {item.orderNumber}
+                  </span>
+                  <p className="mt-4 text-sm leading-7 text-slate-800">
+                    {item.question.questionText}
+                  </p>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <AnswerChoice
+                      label="A"
+                      name={`answer_${item.questionId}`}
+                      text={item.question.optionA}
+                    />
+                    <AnswerChoice
+                      label="B"
+                      name={`answer_${item.questionId}`}
+                      text={item.question.optionB}
+                    />
+                    <AnswerChoice
+                      label="C"
+                      name={`answer_${item.questionId}`}
+                      text={item.question.optionC}
+                    />
+                    <AnswerChoice
+                      label="D"
+                      name={`answer_${item.questionId}`}
+                      text={item.question.optionD}
+                    />
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <LoadingSubmitButton
+                idleLabel="Kirim Jawaban Tryout"
+                pendingLabel="Mengirim..."
+                loadingMessage="Mengirim jawaban tryout..."
+                className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              />
+              <Link
+                href="/siswa#tryout"
+                className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Batal
+              </Link>
+            </div>
+          </section>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function StudentSummaryCard({
+  description,
+  label,
+  value,
+}: {
+  description: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/80 bg-white/90 p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">
+        {value}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    </div>
+  );
+}
+
+function AnswerChoice({
+  label,
+  name,
+  text,
+}: {
+  label: keyof typeof AnswerOption;
+  name: string;
+  text: string;
+}) {
+  return (
+    <label className="flex items-start gap-3 rounded-[1.3rem] border border-slate-200/80 bg-white px-4 py-3 text-sm text-slate-700 transition hover:border-sky-200 hover:bg-sky-50/40">
+      <input
+        name={name}
+        type="radio"
+        value={label}
+        required
+        className="mt-1 h-4 w-4 border-slate-300 text-sky-600"
+      />
+      <span className="min-w-0">
+        <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Opsi {label}
+        </span>
+        <span className="mt-1 block leading-6">{text}</span>
+      </span>
+    </label>
+  );
+}
+
+function ResultOptionCard({
+  isCorrectOption,
+  isSelected,
+  label,
+  text,
+}: {
+  isCorrectOption: boolean;
+  isSelected: boolean;
+  label: string;
+  text: string;
+}) {
+  const accentClass = isCorrectOption
+    ? "border-emerald-200 bg-emerald-50/70"
+    : isSelected
+      ? "border-amber-200 bg-amber-50/70"
+      : "border-slate-200/80 bg-white";
+
+  return (
+    <div className={`rounded-[1.25rem] border px-4 py-3 ${accentClass}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Opsi {label}
+        </p>
+        {isCorrectOption ? (
+          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+            Kunci
+          </span>
+        ) : null}
+        {isSelected ? (
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+            Pilihanmu
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-2 text-sm leading-6 text-slate-700">{text}</p>
+    </div>
+  );
+}
