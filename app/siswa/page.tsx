@@ -529,6 +529,14 @@ export default async function SiswaPage() {
                 ))
               )}
             </div>
+            <div className="mt-5">
+              <Link
+                href="/siswa/hasil"
+                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              >
+                Buka Hasil
+              </Link>
+            </div>
           </section>
 
           <section
@@ -552,12 +560,12 @@ export default async function SiswaPage() {
               )}
             </div>
             <div className="mt-5">
-              <button
-                type="button"
+              <Link
+                href="/siswa/tanggapan"
                 className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
               >
                 Buka Tanggapan
-              </button>
+              </Link>
             </div>
           </section>
         </div>

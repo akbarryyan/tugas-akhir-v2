@@ -38,6 +38,11 @@ export function StudentDashboardShell({
   const studentFirstName = studentName.split(" ")[0] ?? studentName;
   const studentInitial = studentName.slice(0, 1).toUpperCase();
   const sidebarWidth = isSidebarCollapsed ? "92px" : "240px";
+  const isLearningRoute =
+    pathname.startsWith("/siswa/tryout") ||
+    pathname.startsWith("/siswa/hasil") ||
+    pathname.startsWith("/siswa/tanggapan");
+  const shouldShowLearningMenu = !isSidebarCollapsed && (isLearningRoute || isLearningMenuOpen);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, String(isSidebarCollapsed));
@@ -142,7 +147,7 @@ export function StudentDashboardShell({
                       className="flex w-full items-center justify-between gap-3 px-2 py-2 text-left text-[13px] font-medium text-slate-500 transition hover:text-slate-900"
                     >
                       <div className={`flex items-center ${isSidebarCollapsed ? "justify-center w-full" : "gap-3"}`}>
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl text-slate-500">
                           <TryoutIcon />
                         </span>
                         <span
@@ -158,7 +163,7 @@ export function StudentDashboardShell({
                           isSidebarCollapsed ? "lg:hidden" : "opacity-100"
                         }`}
                       >
-                        <span className={`block transition-transform duration-300 ${isLearningMenuOpen ? "rotate-180" : ""}`}>
+                        <span className={`block transition-transform duration-300 ${shouldShowLearningMenu ? "rotate-180" : ""}`}>
                           <ChevronDownIcon />
                         </span>
                       </span>
@@ -166,41 +171,38 @@ export function StudentDashboardShell({
 
                     <div
                       className={`overflow-hidden transition-[max-height,opacity,margin,padding] duration-300 ${
-                        isSidebarCollapsed || !isLearningMenuOpen
+                        !shouldShowLearningMenu
                           ? "mt-0 max-h-0 opacity-0"
                           : "ml-[2.85rem] mt-1 max-h-32 space-y-1.5 pb-1 opacity-100"
                       }`}
                     >
                       <SidebarChildLink
-                        href="/siswa#tryout"
+                        href="/siswa/tryout"
                         label="Tryout"
+                        isActive={pathname.startsWith("/siswa/tryout")}
                         onNavigate={() => setIsSidebarOpen(false)}
                       />
                       <SidebarChildLink
-                        href="/siswa#hasil"
+                        href="/siswa/hasil"
                         label="Hasil"
+                        isActive={pathname.startsWith("/siswa/hasil")}
                         onNavigate={() => setIsSidebarOpen(false)}
                       />
                       <SidebarChildLink
-                        href="/siswa#tanggapan"
+                        href="/siswa/tanggapan"
                         label="Tanggapan"
+                        isActive={pathname.startsWith("/siswa/tanggapan")}
                         onNavigate={() => setIsSidebarOpen(false)}
                       />
                     </div>
                   </div>
 
                   <SidebarRowLink
-                    href="/siswa#hasil"
+                    href="/siswa/progres"
                     icon={<ResultIcon />}
+                    isActive={pathname.startsWith("/siswa/progres")}
                     isCollapsed={isSidebarCollapsed}
                     label="Progres"
-                    onNavigate={() => setIsSidebarOpen(false)}
-                  />
-                  <SidebarRowLink
-                    href="/siswa#tanggapan"
-                    icon={<FeedbackIcon />}
-                    isCollapsed={isSidebarCollapsed}
-                    label="Feedback"
                     onNavigate={() => setIsSidebarOpen(false)}
                   />
                 </div>
@@ -348,16 +350,6 @@ function ResultIcon() {
   );
 }
 
-function FeedbackIcon() {
-  return (
-    <svg aria-hidden="true" {...iconProps()}>
-      <path d="M5.5 7.5A2.5 2.5 0 0 1 8 5h8a2.5 2.5 0 0 1 2.5 2.5v5A2.5 2.5 0 0 1 16 15H11l-3.5 3v-3H8A2.5 2.5 0 0 1 5.5 12.5v-5Z" />
-      <path d="M9 9.5h6" />
-      <path d="M9 12h4" />
-    </svg>
-  );
-}
-
 function SidebarPrimaryLink({
   href,
   icon,
@@ -379,7 +371,7 @@ function SidebarPrimaryLink({
       onClick={onNavigate}
       title={label}
       className={`flex items-center rounded-full py-3 text-sm font-semibold transition ${
-        isCollapsed ? "justify-center px-0" : "gap-3 px-4"
+        isCollapsed ? "justify-center px-0" : "gap-2.5 px-4"
       } ${
         isActive
           ? "bg-[#e8f0ff] text-blue-700"
@@ -388,7 +380,7 @@ function SidebarPrimaryLink({
     >
       <span
         className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl ${
-          isActive ? "bg-white text-blue-700 shadow-[0_10px_18px_rgba(59,130,246,0.12)]" : "bg-slate-100 text-slate-500"
+          isActive ? "text-blue-700" : "text-slate-500"
         }`}
       >
         {icon}
@@ -407,12 +399,14 @@ function SidebarPrimaryLink({
 function SidebarRowLink({
   href,
   icon,
+  isActive,
   isCollapsed,
   label,
   onNavigate,
 }: {
   href: string;
   icon: ReactNode;
+  isActive: boolean;
   isCollapsed: boolean;
   label: string;
   onNavigate: () => void;
@@ -422,12 +416,20 @@ function SidebarRowLink({
       href={href}
       onClick={onNavigate}
       title={label}
-      className={`flex items-center rounded-[1.35rem] py-3 text-sm font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 ${
-        isCollapsed ? "justify-center px-0" : "justify-between gap-3 px-4"
+      className={`flex items-center rounded-[1.35rem] py-3 text-sm font-medium transition ${
+        isCollapsed ? "justify-center px-0" : "gap-2.5 px-4"
+      } ${
+        isActive
+          ? "bg-slate-50 text-slate-900"
+          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
       }`}
     >
-      <span className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+      <span className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5"}`}>
+        <span
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl ${
+            isActive ? "text-blue-700" : "text-slate-500"
+          }`}
+        >
           {icon}
         </span>
         <span
@@ -438,19 +440,18 @@ function SidebarRowLink({
           {label}
         </span>
       </span>
-      <span className={`${isCollapsed ? "lg:hidden" : "opacity-100"}`}>
-        <ChevronRightIcon />
-      </span>
     </Link>
   );
 }
 
 function SidebarChildLink({
   href,
+  isActive,
   label,
   onNavigate,
 }: {
   href: string;
+  isActive: boolean;
   label: string;
   onNavigate: () => void;
 }) {
@@ -458,7 +459,11 @@ function SidebarChildLink({
     <Link
       href={href}
       onClick={onNavigate}
-      className="block py-1 text-sm text-slate-500 transition hover:text-slate-900"
+      className={`block rounded-full px-3 py-1.5 text-sm transition ${
+        isActive
+          ? "bg-blue-50 font-medium text-blue-700"
+          : "text-slate-500 hover:text-slate-900"
+      }`}
     >
       {label}
     </Link>

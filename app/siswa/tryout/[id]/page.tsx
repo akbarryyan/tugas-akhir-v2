@@ -115,10 +115,10 @@ export default async function SiswaTryoutDetailPage({
             Tryout yang kamu buka belum dipublikasikan atau sudah tidak tersedia lagi.
           </p>
           <Link
-            href="/siswa#tryout"
+            href="/siswa/tryout"
             className="mt-6 inline-flex h-11 items-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Kembali ke Beranda Siswa
+            Kembali ke Daftar Tryout
           </Link>
         </section>
       </div>
@@ -159,7 +159,7 @@ export default async function SiswaTryoutDetailPage({
           </div>
 
           <Link
-            href="/siswa#tryout"
+            href="/siswa/tryout"
             className="inline-flex h-11 items-center rounded-full border border-sky-200 bg-white px-5 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-50"
           >
             Kembali ke Daftar Tryout
@@ -333,7 +333,7 @@ export default async function SiswaTryoutDetailPage({
                 className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <Link
-                href="/siswa#tryout"
+                href="/siswa/tryout"
                 className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Batal
