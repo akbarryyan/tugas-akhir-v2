@@ -9,6 +9,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 const tryoutSchema = z.object({
+  bankSoalId: z.string().min(1, "Bank soal wajib dipilih."),
   description: z.string().trim().optional(),
   durationMinutes: z
     .string()
@@ -28,7 +29,6 @@ const tryoutSchema = z.object({
     ),
   isPublished: z.boolean(),
   questionIds: z.array(z.string().min(1)).min(1, "Pilih minimal satu soal untuk tryout."),
-  subjectId: z.string().min(1, "Mata pelajaran wajib dipilih."),
   title: z.string().trim().min(3, "Judul tryout minimal 3 karakter."),
 });
 
@@ -52,6 +52,17 @@ function redirectWithMessage(
   });
 
   redirect(`${path}?${params.toString()}`);
+}
+
+function getRedirectTarget(formData: FormData, fallbackPath: string) {
+  const value = formData.get("redirectTo");
+
+  if (typeof value !== "string") {
+    return fallbackPath;
+  }
+
+  const trimmedValue = value.trim();
+  return trimmedValue || fallbackPath;
 }
 
 function getErrorMessage(error: unknown) {
@@ -108,30 +119,53 @@ async function getTeacherContext() {
   };
 }
 
-async function assertQuestionSelectionBelongsToSubject(
-  subjectId: string,
-  questionIds: string[],
-) {
-  const selectedQuestions = await prisma.question.findMany({
+async function getTeacherBankSoalContext(bankSoalId: string, teacherId: string) {
+  const bankSoal = await prisma.bankSoal.findFirst({
     where: {
-      id: {
-        in: questionIds,
-      },
+      createdByTeacherId: teacherId,
+      id: bankSoalId,
       isActive: true,
-      subjectId,
     },
     select: {
       id: true,
+      subjectId: true,
+    },
+  });
+
+  if (!bankSoal) {
+    throw new Error("Bank soal tidak ditemukan atau belum aktif.");
+  }
+
+  return bankSoal;
+}
+
+async function assertQuestionSelectionBelongsToBankSoal(
+  bankSoalId: string,
+  questionIds: string[],
+) {
+  const selectedQuestions = await prisma.bankSoalQuestion.findMany({
+    where: {
+      bankSoalId,
+      questionId: {
+        in: questionIds,
+      },
+      question: {
+        isActive: true,
+      },
+    },
+    select: {
+      questionId: true,
     },
   });
 
   if (selectedQuestions.length !== questionIds.length) {
-    throw new Error("Beberapa soal yang dipilih tidak valid untuk mata pelajaran ini.");
+    throw new Error("Beberapa soal yang dipilih tidak termasuk dalam bank soal ini.");
   }
 }
 
 function getTryoutPayload(formData: FormData) {
   return {
+    bankSoalId: formData.get("bankSoalId"),
     description: formData.get("description"),
     durationMinutes: formData.get("durationMinutes"),
     isPublished: formData.get("isPublished") === "on",
@@ -139,7 +173,6 @@ function getTryoutPayload(formData: FormData) {
       .getAll("questionIds")
       .map((value) => String(value).trim())
       .filter(Boolean),
-    subjectId: formData.get("subjectId"),
     title: formData.get("title"),
   };
 }
@@ -148,23 +181,24 @@ export async function createTryoutAction(formData: FormData) {
   try {
     const parsedData = tryoutSchema.parse(getTryoutPayload(formData));
     const context = await getTeacherContext();
+    const bankSoal = await getTeacherBankSoalContext(
+      parsedData.bankSoalId,
+      context.teacherId,
+    );
 
-    if (!context.subjectIds.includes(parsedData.subjectId)) {
-      throw new Error("Mata pelajaran ini tidak termasuk dalam mapel yang Anda ampu.");
-    }
-
-    await assertQuestionSelectionBelongsToSubject(
-      parsedData.subjectId,
+    await assertQuestionSelectionBelongsToBankSoal(
+      parsedData.bankSoalId,
       parsedData.questionIds,
     );
 
     await prisma.tryout.create({
       data: {
+        bankSoalId: parsedData.bankSoalId,
         createdByTeacherId: context.teacherId,
         description: parsedData.description || null,
         durationMinutes: parsedData.durationMinutes,
         isPublished: parsedData.isPublished,
-        subjectId: parsedData.subjectId,
+        subjectId: bankSoal.subjectId,
         title: parsedData.title,
         tryoutQuestions: {
           create: parsedData.questionIds.map((questionId, index) => ({
@@ -191,6 +225,7 @@ export async function createTryoutAction(formData: FormData) {
 
 export async function updateTryoutAction(formData: FormData) {
   let tryoutId = "";
+  const redirectTarget = getRedirectTarget(formData, "/guru/tryout");
 
   try {
     const parsedData = tryoutUpdateSchema.parse({
@@ -199,10 +234,10 @@ export async function updateTryoutAction(formData: FormData) {
     });
     tryoutId = parsedData.tryoutId;
     const context = await getTeacherContext();
-
-    if (!context.subjectIds.includes(parsedData.subjectId)) {
-      throw new Error("Mata pelajaran ini tidak termasuk dalam mapel yang Anda ampu.");
-    }
+    const bankSoal = await getTeacherBankSoalContext(
+      parsedData.bankSoalId,
+      context.teacherId,
+    );
 
     const existingTryout = await prisma.tryout.findFirst({
       where: {
@@ -218,8 +253,8 @@ export async function updateTryoutAction(formData: FormData) {
       throw new Error("Tryout tidak ditemukan atau tidak dapat Anda ubah.");
     }
 
-    await assertQuestionSelectionBelongsToSubject(
-      parsedData.subjectId,
+    await assertQuestionSelectionBelongsToBankSoal(
+      parsedData.bankSoalId,
       parsedData.questionIds,
     );
 
@@ -229,10 +264,11 @@ export async function updateTryoutAction(formData: FormData) {
           id: parsedData.tryoutId,
         },
         data: {
+          bankSoalId: parsedData.bankSoalId,
           description: parsedData.description || null,
           durationMinutes: parsedData.durationMinutes,
           isPublished: parsedData.isPublished,
-          subjectId: parsedData.subjectId,
+          subjectId: bankSoal.subjectId,
           title: parsedData.title,
         },
       });
@@ -252,7 +288,7 @@ export async function updateTryoutAction(formData: FormData) {
       });
     });
   } catch (error) {
-    redirectWithMessage("/guru/tryout", "error", getErrorMessage(error));
+    redirectWithMessage(redirectTarget, "error", getErrorMessage(error));
   }
 
   revalidatePath("/guru");
@@ -261,7 +297,7 @@ export async function updateTryoutAction(formData: FormData) {
   revalidatePath("/siswa");
   revalidatePath(`/guru/tryout/${tryoutId}`);
   redirectWithMessage(
-    "/guru/tryout",
+    redirectTarget,
     "success",
     "Paket tryout berhasil diperbarui.",
   );
@@ -269,6 +305,7 @@ export async function updateTryoutAction(formData: FormData) {
 
 export async function toggleTryoutPublishAction(formData: FormData) {
   let tryoutId = "";
+  const redirectTarget = getRedirectTarget(formData, "/guru/tryout");
 
   try {
     const parsedData = tryoutToggleSchema.parse({
@@ -301,7 +338,7 @@ export async function toggleTryoutPublishAction(formData: FormData) {
       },
     });
   } catch (error) {
-    redirectWithMessage("/guru/tryout", "error", getErrorMessage(error));
+    redirectWithMessage(redirectTarget, "error", getErrorMessage(error));
   }
 
   revalidatePath("/guru");
@@ -310,7 +347,7 @@ export async function toggleTryoutPublishAction(formData: FormData) {
   revalidatePath("/siswa");
   revalidatePath(`/guru/tryout/${tryoutId}`);
   redirectWithMessage(
-    "/guru/tryout",
+    redirectTarget,
     "success",
     "Status publikasi tryout berhasil diperbarui.",
   );
@@ -318,6 +355,7 @@ export async function toggleTryoutPublishAction(formData: FormData) {
 
 export async function deleteTryoutAction(formData: FormData) {
   let tryoutId = "";
+  const redirectTarget = getRedirectTarget(formData, "/guru/tryout");
 
   try {
     tryoutId = z.string().min(1).parse(formData.get("tryoutId"));
@@ -343,7 +381,7 @@ export async function deleteTryoutAction(formData: FormData) {
       },
     });
   } catch (error) {
-    redirectWithMessage("/guru/tryout", "error", getErrorMessage(error));
+    redirectWithMessage(redirectTarget, "error", getErrorMessage(error));
   }
 
   revalidatePath("/guru");
@@ -351,5 +389,5 @@ export async function deleteTryoutAction(formData: FormData) {
   revalidatePath("/admin/tryout");
   revalidatePath("/siswa");
   revalidatePath(`/guru/tryout/${tryoutId}`);
-  redirectWithMessage("/guru/tryout", "success", "Paket tryout berhasil dihapus.");
+  redirectWithMessage(redirectTarget, "success", "Paket tryout berhasil dihapus.");
 }

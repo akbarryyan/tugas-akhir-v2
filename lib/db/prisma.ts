@@ -14,13 +14,38 @@ const globalForPrisma = globalThis as unknown as {
 
 const adapter = new PrismaMariaDb(getMariadbConfigFromUrl(databaseUrl));
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient() {
+  return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
 }
+
+function getPrismaInstance() {
+  const cachedPrisma = globalForPrisma.prisma as
+    | (PrismaClient & {
+        bankSoal?: unknown;
+      })
+    | undefined;
+
+  if (cachedPrisma && typeof cachedPrisma.bankSoal !== "undefined") {
+    return cachedPrisma;
+  }
+
+  const nextPrisma = createPrismaClient();
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = nextPrisma;
+  }
+
+  return nextPrisma;
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, property, receiver) {
+    const client = getPrismaInstance() as unknown as Record<PropertyKey, unknown>;
+    const value = Reflect.get(client, property, receiver);
+
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});

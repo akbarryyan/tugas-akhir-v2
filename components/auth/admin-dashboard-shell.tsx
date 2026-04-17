@@ -35,6 +35,31 @@ const pageTitleByPath: Record<string, string> = {
   "/admin/tryout": "Pantau Data Tryout",
 };
 
+const headerTabs = [
+  {
+    href: "/admin",
+    label: "Dashboard",
+    matches: (pathname: string) => pathname === "/admin",
+  },
+  {
+    href: "/admin/guru",
+    label: "Pengguna",
+    matches: (pathname: string) =>
+      pathname.startsWith("/admin/guru") || pathname.startsWith("/admin/siswa"),
+  },
+  {
+    href: "/admin/mapel",
+    label: "Akademik",
+    matches: (pathname: string) =>
+      pathname.startsWith("/admin/mapel") || pathname.startsWith("/admin/pengampu"),
+  },
+  {
+    href: "/admin/tryout",
+    label: "Tryout",
+    matches: (pathname: string) => pathname.startsWith("/admin/tryout"),
+  },
+];
+
 const STORAGE_KEY = "admin-sidebar-collapsed";
 
 export function AdminDashboardShell({
@@ -44,26 +69,22 @@ export function AdminDashboardShell({
 }: AdminDashboardShellProps) {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return window.localStorage.getItem(STORAGE_KEY) === "true";
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const currentTitle = pageTitleByPath[pathname] ?? "Panel Administrasi";
+  const isDashboardHome = pathname === "/admin";
   const isCompactSidebar = isSidebarCollapsed && !isSidebarOpen;
   const sidebarWidth = isSidebarCollapsed ? "116px" : "292px";
 
   useEffect(() => {
-    const storedValue = window.localStorage.getItem(STORAGE_KEY);
-    if (storedValue === "true") {
-      setIsSidebarCollapsed(true);
-    }
-  }, []);
-
-  useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
-
-  useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (!isSidebarOpen) {
@@ -92,7 +113,9 @@ export function AdminDashboardShell({
   }, []);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(129,140,248,0.18),_transparent_28%),linear-gradient(180deg,#eef2ff_0%,#f8fafc_22%,#f8fafc_100%)] text-slate-900">
+    <div className="relative min-h-screen overflow-x-clip bg-[#f3f5fb] text-slate-900">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[linear-gradient(135deg,#161d33_0%,#222b48_52%,#1a2747_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[radial-gradient(circle_at_82%_28%,rgba(99,102,241,0.34)_0,transparent_20%),radial-gradient(circle_at_90%_70%,rgba(96,165,250,0.22)_0,transparent_25%),radial-gradient(circle,rgba(165,180,252,0.75)_1.15px,transparent_1.15px)] bg-[length:auto,auto,12px_12px] opacity-50 [mask-image:linear-gradient(180deg,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0.18)_76%,rgba(0,0,0,0)_100%)]" />
       {isSidebarOpen ? (
         <button
           type="button"
@@ -286,60 +309,179 @@ export function AdminDashboardShell({
           </div>
         </aside>
 
-        <div className="min-w-0">
+        <div className="relative z-10 min-w-0">
           <div
-            className={`sticky top-0 isolate pb-3 pt-3 lg:pb-4 lg:pt-6 ${
+            className={`sticky top-3 isolate pb-6 sm:top-4 sm:pb-7 lg:top-6 lg:pb-12 ${
               isSidebarOpen ? "z-20 lg:z-30" : "z-30"
             }`}
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-3 bg-[radial-gradient(circle_at_top_left,_rgba(129,140,248,0.18),_transparent_28%),linear-gradient(180deg,#eef2ff_0%,#f8fafc_22%,#f8fafc_100%)] lg:h-6" />
             <header
-              className={`relative rounded-[1.45rem] border border-slate-200/90 bg-white px-4 py-3.5 transition-shadow duration-200 sm:px-5 sm:py-4 ${
+              className={`relative overflow-hidden border border-white/10 bg-[linear-gradient(135deg,rgba(21,29,50,0.98),rgba(31,44,74,0.96))] px-4 text-white transition-[padding,box-shadow,border-radius] duration-300 sm:rounded-[1.8rem] sm:px-5 ${
+                isScrolled ? "rounded-[1.55rem]" : "rounded-[1.8rem]"
+              } ${
+                isScrolled ? "py-1.5 sm:py-5" : "py-3.5 sm:py-5"
+              } ${
                 isScrolled
-                  ? "shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
-                  : "shadow-none"
+                  ? "shadow-[0_20px_44px_rgba(15,23,42,0.24)]"
+                  : "shadow-[0_16px_32px_rgba(15,23,42,0.14)]"
               }`}
             >
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0 space-y-2.5 sm:space-y-3">
-                  <div className="flex items-center gap-3">
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-[46%] bg-[radial-gradient(circle_at_80%_32%,rgba(99,102,241,0.45)_0,transparent_28%),radial-gradient(circle_at_88%_72%,rgba(96,165,250,0.24)_0,transparent_26%),radial-gradient(circle,rgba(129,140,248,0.65)_1.05px,transparent_1.05px)] bg-[length:auto,auto,12px_12px] opacity-55 [mask-image:linear-gradient(90deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.95)_20%,rgba(0,0,0,0.8)_100%)]" />
+
+              <div
+                className={`relative flex flex-col transition-[gap] duration-300 ${
+                  isScrolled ? "gap-0.5 sm:gap-5" : "gap-4 sm:gap-5"
+                }`}
+              >
+                <div
+                  className={`flex flex-col xl:flex-row xl:justify-between ${
+                    isScrolled ? "gap-2 sm:gap-4" : "gap-4"
+                  }`}
+                >
+                  <div
+                    className={`min-w-0 ${
+                      isScrolled ? "space-y-0 sm:space-y-4" : "space-y-3 sm:space-y-4"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center justify-between lg:block ${
+                        isScrolled ? "gap-2 md:gap-3" : "gap-3"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setIsSidebarOpen(true)}
+                        className={`inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-slate-100 transition-all duration-300 hover:bg-white/12 lg:hidden ${
+                          isScrolled ? "h-9 w-9" : "h-11 w-11"
+                        }`}
+                      >
+                        <MenuIcon />
+                      </button>
+
+                      <div
+                        className={`flex min-w-0 items-center self-center ${
+                          isScrolled ? "gap-2 md:gap-3" : "gap-3"
+                        }`}
+                      >
+                        <div
+                          className={`flex shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#8b5cf6_0%,#6366f1_52%,#60a5fa_100%)] text-sm font-semibold text-white shadow-[0_12px_24px_rgba(99,102,241,0.35)] transition-all duration-300 lg:hidden ${
+                            isScrolled ? "h-9 w-9 text-[13px]" : "h-11 w-11"
+                          }`}
+                        >
+                          {(user.name ?? "A").slice(0, 1).toUpperCase()}
+                        </div>
+                        <button
+                          type="button"
+                          className={`inline-flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/8 text-slate-100 transition-all duration-300 hover:bg-white/12 md:hidden ${
+                            isScrolled ? "h-9 w-9" : "h-11 w-11"
+                          }`}
+                        >
+                          <BellIcon />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`overflow-hidden transition-[max-height,opacity,transform,margin] duration-300 ease-out ${
+                        isScrolled
+                          ? "max-h-0 -translate-y-2 opacity-0 md:mt-0 md:max-h-20 md:translate-y-0 md:opacity-100"
+                          : "max-h-16 translate-y-0 opacity-100"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <p className="truncate text-[11px] font-semibold uppercase tracking-[0.3em] text-indigo-200 sm:text-xs">
+                          Panel Administrasi
+                        </p>
+                        <div className="hidden h-px w-14 bg-white/14 lg:block" />
+                      </div>
+                    </div>
+
+                    <div
+                      className={`-mx-1 overflow-hidden px-1 transition-[max-height,opacity,transform,padding] duration-300 ease-out md:max-h-none md:opacity-100 ${
+                        isScrolled
+                          ? "max-h-0 -translate-y-2 pb-0 opacity-0 md:translate-y-0"
+                          : "max-h-24 translate-y-0 pb-1 opacity-100"
+                      }`}
+                    >
+                      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                        {headerTabs.map((item) => {
+                          const isActive = item.matches(pathname);
+
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              className={`inline-flex shrink-0 items-center rounded-full px-4 py-2 text-sm font-medium transition ${
+                                isActive
+                                  ? "bg-white/12 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)]"
+                                  : "text-slate-300 hover:bg-white/8 hover:text-white"
+                              }`}
+                            >
+                              {item.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden flex-wrap items-center gap-3 md:flex xl:flex-nowrap">
+                    <div className="hidden min-w-0 items-center gap-3 rounded-full border border-white/10 bg-white/8 px-4 py-2.5 text-sm text-slate-300 shadow-[0_10px_22px_rgba(15,23,42,0.14)] md:flex xl:w-[320px]">
+                      <SearchIcon />
+                      <span className="truncate text-slate-400">
+                        Cari menu, data, atau aktivitas admin
+                      </span>
+                    </div>
+
                     <button
                       type="button"
-                      onClick={() => setIsSidebarOpen(true)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition hover:border-indigo-200 hover:text-indigo-700 lg:hidden"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/8 text-slate-100 transition hover:bg-white/12"
                     >
-                      <MenuIcon />
+                      <BellIcon />
                     </button>
-                    <p className="truncate text-[11px] font-semibold uppercase tracking-[0.24em] text-indigo-600 sm:text-xs">
-                      Panel Administrasi
-                    </p>
+
+                    <div className="flex min-w-0 items-center gap-3 rounded-full border border-white/10 bg-white/8 px-3 py-2 shadow-[0_10px_22px_rgba(15,23,42,0.14)]">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#8b5cf6_0%,#6366f1_52%,#60a5fa_100%)] text-sm font-semibold text-white shadow-[0_12px_24px_rgba(99,102,241,0.35)]">
+                        {(user.name ?? "A").slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 pr-1">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {user.name ?? "Administrator"}
+                        </p>
+                        <p className="truncate text-xs text-slate-300">
+                          Administrator Sekolah
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <h2 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
-                    {currentTitle}
-                  </h2>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Kelola data inti sekolah melalui navigasi di samping dan pantau perubahan dari setiap halaman kerja.
-                  </p>
                 </div>
 
-                <div className="flex w-full min-w-0 items-center gap-3 rounded-[1.25rem] border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] px-3.5 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.05)] sm:px-4 md:w-auto">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#334155_100%)] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.2)] sm:h-11 sm:w-11">
-                    {(user.name ?? "A").slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-950">
-                      {user.name ?? "Administrator"}
-                    </p>
-                    <p className="truncate text-sm text-slate-500">
-                      Administrator Sekolah
-                    </p>
-                  </div>
+                <div
+                  className={`max-w-3xl overflow-hidden space-y-2.5 transition-[max-height,opacity,transform] duration-300 ease-out sm:space-y-3 ${
+                    isScrolled
+                      ? "max-h-0 -translate-y-3 opacity-0 md:max-h-48 md:translate-y-0 md:opacity-100"
+                      : "max-h-48 translate-y-0 opacity-100"
+                  }`}
+                >
+                  <h2 className="text-[2rem] font-semibold leading-tight tracking-tight text-white sm:text-[2rem]">
+                    {currentTitle}
+                  </h2>
+                  <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:hidden">
+                    Kelola data inti sekolah dan pantau perubahan utama dari satu dashboard administrasi.
+                  </p>
+                  <p className="hidden max-w-2xl text-sm leading-7 text-slate-300 sm:block sm:text-[15px]">
+                    Kelola data inti sekolah melalui navigasi di samping dan pantau perubahan dari setiap halaman kerja dalam satu dashboard administrasi yang lebih terstruktur.
+                  </p>
                 </div>
               </div>
             </header>
           </div>
 
-          <main className="relative z-0 min-w-0 overflow-x-clip pb-4 pt-4 lg:pt-4">
+          <main
+            className={`relative z-0 min-w-0 overflow-x-clip pb-6 ${
+              isDashboardHome ? "pt-5 lg:-mt-10 lg:pt-0" : "pt-4"
+            }`}
+          >
             {children}
           </main>
         </div>
@@ -429,6 +571,26 @@ function MenuIcon() {
       <path d="M4 7h16" />
       <path d="M4 12h16" />
       <path d="M4 17h16" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 3.5 3.5" />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M8.5 17.5h7" />
+      <path d="M9 17.5v-5a3 3 0 1 1 6 0v5" />
+      <path d="M6.5 17.5h11" />
+      <path d="M8 20a4.5 4.5 0 0 0 8 0" />
     </svg>
   );
 }

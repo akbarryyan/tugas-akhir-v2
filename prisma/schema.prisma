@@ -65,6 +65,7 @@ model TeacherProfile {
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjectTeachers  SubjectTeacher[]
   createdQuestions Question[]
+  createdBankSoals BankSoal[]       @relation("TeacherCreatedBankSoals")
   createdTryouts   Tryout[]         @relation("TeacherCreatedTryouts")
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
@@ -90,6 +91,7 @@ model Subject {
   description     String?         @db.Text
   isActive        Boolean         @default(true)
   questions       Question[]
+  bankSoals       BankSoal[]
   tryouts         Tryout[]
   subjectTeachers SubjectTeacher[]
   feedbacks       Feedback[]
@@ -125,6 +127,7 @@ model Question {
   isActive           Boolean        @default(true)
   subject            Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   createdByTeacher   TeacherProfile @relation(fields: [createdByTeacherId], references: [id], onDelete: Restrict)
+  bankSoalQuestions  BankSoalQuestion[]
   tryoutQuestions    TryoutQuestion[]
   tryoutAnswers      TryoutAnswer[]
   createdAt          DateTime       @default(now())
@@ -134,15 +137,49 @@ model Question {
   @@index([createdByTeacherId])
 }
 
+model BankSoal {
+  id                 String             @id @default(cuid())
+  subjectId          String
+  createdByTeacherId String
+  title              String
+  description        String?            @db.Text
+  isActive           Boolean            @default(true)
+  subject            Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdByTeacher   TeacherProfile     @relation("TeacherCreatedBankSoals", fields: [createdByTeacherId], references: [id], onDelete: Cascade)
+  bankSoalQuestions  BankSoalQuestion[]
+  tryouts            Tryout[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([subjectId])
+  @@index([createdByTeacherId])
+  @@index([isActive])
+}
+
+model BankSoalQuestion {
+  id          String   @id @default(cuid())
+  bankSoalId  String
+  questionId  String
+  orderNumber Int
+  bankSoal    BankSoal @relation(fields: [bankSoalId], references: [id], onDelete: Cascade)
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([bankSoalId, questionId])
+  @@unique([bankSoalId, orderNumber])
+  @@index([questionId])
+}
+
 model Tryout {
   id                 String          @id @default(cuid())
   subjectId          String
+  bankSoalId         String?
   createdByTeacherId String?
   title              String
   description        String?         @db.Text
   isPublished        Boolean         @default(false)
   durationMinutes    Int?
   subject            Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  bankSoal           BankSoal?       @relation(fields: [bankSoalId], references: [id], onDelete: SetNull)
   createdByTeacher   TeacherProfile? @relation("TeacherCreatedTryouts", fields: [createdByTeacherId], references: [id], onDelete: SetNull)
   tryoutQuestions    TryoutQuestion[]
   sessions           TryoutSession[]
@@ -150,6 +187,7 @@ model Tryout {
   updatedAt          DateTime        @updatedAt
 
   @@index([subjectId])
+  @@index([bankSoalId])
   @@index([createdByTeacherId])
   @@index([isPublished])
   @@index([subjectId, isPublished])
