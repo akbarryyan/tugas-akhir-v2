@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthMethod } from "@prisma/client";
@@ -17,12 +17,7 @@ type StudentDashboardShellProps = {
   };
 };
 
-const navigationItems = [
-  { href: "/siswa", label: "Beranda", helper: "Lihat ringkasan belajar." },
-  { href: "/siswa#tryout", label: "Tryout", helper: "Mulai latihan yang tersedia." },
-  { href: "/siswa#hasil", label: "Hasil", helper: "Cek nilai terbaru." },
-  { href: "/siswa#tanggapan", label: "Tanggapan", helper: "Isi umpan balik setelah tryout." },
-];
+const STORAGE_KEY = "student-sidebar-collapsed";
 
 export function StudentDashboardShell({
   children,
@@ -31,161 +26,257 @@ export function StudentDashboardShell({
 }: StudentDashboardShellProps) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return window.localStorage.getItem(STORAGE_KEY) === "true";
+  });
+  const [isLearningMenuOpen, setIsLearningMenuOpen] = useState(false);
   const studentName = user.name ?? "Siswa";
+  const studentFirstName = studentName.split(" ")[0] ?? studentName;
+  const studentInitial = studentName.slice(0, 1).toUpperCase();
+  const sidebarWidth = isSidebarCollapsed ? "92px" : "240px";
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.32),_transparent_32%),linear-gradient(180deg,#f5fbff_0%,#eff6ff_45%,#f8fafc_100%)] text-slate-900">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#f6f8fc_100%)] text-slate-900">
       {isSidebarOpen ? (
         <button
           type="button"
           aria-label="Tutup menu siswa"
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/24 backdrop-blur-[2px] lg:hidden"
         />
       ) : null}
 
-      <div className="mx-auto flex min-h-screen w-full max-w-[1500px] gap-4 overflow-x-clip px-3 py-3 sm:px-5 sm:py-4 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-6 lg:px-6 lg:py-6">
+      <div
+        className="mx-auto flex min-h-screen w-full max-w-[1520px] gap-4 overflow-x-clip px-3 py-3 sm:px-5 sm:py-4 lg:grid lg:items-start lg:gap-0 lg:rounded-[2.1rem] lg:border lg:border-slate-200/80 lg:bg-white lg:px-0 lg:py-0 lg:shadow-[0_26px_62px_rgba(15,23,42,0.08)] lg:[grid-template-columns:var(--student-sidebar-width)_minmax(0,1fr)]"
+        style={{ "--student-sidebar-width": sidebarWidth } as CSSProperties}
+      >
         <aside
-          className={`fixed inset-y-3 left-3 z-50 w-[min(320px,calc(100vw-1.5rem))] overflow-hidden rounded-[2rem] border border-sky-100 bg-[linear-gradient(180deg,#ffffff_0%,#f3fbff_100%)] shadow-[0_24px_64px_rgba(14,116,144,0.14)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-6 lg:z-auto lg:h-[calc(100vh-3rem)] lg:w-auto lg:translate-x-0 ${
+          className={`fixed inset-y-3 left-3 z-50 w-[min(320px,calc(100vw-1.5rem))] overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcff_100%)] shadow-[0_24px_60px_rgba(15,23,42,0.1)] transition-[transform,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:self-start lg:w-auto lg:translate-x-0 lg:rounded-none lg:border-0 lg:border-r lg:border-slate-200/80 lg:shadow-none ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-[108%] lg:translate-x-0"
           }`}
         >
           <div className="flex h-full min-h-0 flex-col">
-            <div className="border-b border-sky-100 px-5 pb-5 pt-6">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-4">
-                  <span className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
-                    Portal Siswa
-                  </span>
-                  <div className="space-y-2">
-                    <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
-                      {studentName}
-                    </h1>
-                    <p className="text-sm leading-6 text-slate-600">
-                      {description}
-                    </p>
-                  </div>
-                </div>
-
+            <div
+              className={`border-b border-slate-200/80 pb-5 pt-5 transition-[padding] duration-300 ${
+                isSidebarCollapsed ? "lg:px-3" : "px-5"
+              }`}
+            >
+              <div className="flex justify-end lg:hidden">
                 <button
                   type="button"
                   onClick={() => setIsSidebarOpen(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-100 bg-white text-slate-500 transition hover:border-sky-200 hover:text-sky-700 lg:hidden"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-200 hover:text-blue-700"
                 >
                   <CloseIcon />
                 </button>
               </div>
 
-              <div className="mt-5 rounded-[1.5rem] bg-[linear-gradient(135deg,#e0f2fe_0%,#eff6ff_55%,#ffffff_100%)] p-4 shadow-inner shadow-white/70">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-                  Metode Masuk
+              <div className={`hidden lg:flex ${isSidebarCollapsed ? "justify-center" : "justify-end"}`}>
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarCollapsed((current) => !current)}
+                  title={isSidebarCollapsed ? "Buka sidebar" : "Ringkas sidebar"}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-200 hover:text-blue-700"
+                >
+                  {isSidebarCollapsed ? <ExpandIcon /> : <CollapseIcon />}
+                </button>
+              </div>
+
+              <div className={`mt-1 text-center ${isSidebarCollapsed ? "lg:mt-4" : ""}`}>
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#38bdf8_100%)] text-base font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.18)]">
+                  {studentInitial}
+                </div>
+                <p
+                  className={`mt-3 text-sm font-semibold text-slate-900 transition-[max-height,opacity,transform] duration-300 ${
+                    isSidebarCollapsed
+                      ? "lg:max-h-0 lg:-translate-y-1 lg:overflow-hidden lg:opacity-0"
+                      : "max-h-10 translate-y-0 opacity-100"
+                  }`}
+                >
+                  Hello, {studentFirstName}
                 </p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">
-                  {user.authMethod === AuthMethod.NISN ? "NISN Siswa" : "Akun Portal"}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Gunakan area ini untuk mengikuti tryout, melihat hasil, dan mengisi tanggapan belajar.
+                <p
+                  className={`mt-1 text-[11px] leading-5 text-slate-400 transition-[max-height,opacity,transform] duration-300 ${
+                    isSidebarCollapsed
+                      ? "lg:max-h-0 lg:-translate-y-1 lg:overflow-hidden lg:opacity-0"
+                      : "max-h-10 translate-y-0 opacity-100"
+                  }`}
+                >
+                  {user.email ?? (user.authMethod === AuthMethod.NISN ? "Akun siswa aktif" : "Akun portal")}
                 </p>
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col px-4 py-4">
-              <p className="px-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                Menu Belajar
-              </p>
+            <div
+              className={`flex min-h-0 flex-1 flex-col py-4 transition-[padding] duration-300 ${
+                isSidebarCollapsed ? "lg:px-3" : "px-4"
+              }`}
+            >
+              <nav className="no-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="space-y-1">
+                  <SidebarPrimaryLink
+                    href="/siswa"
+                    icon={<DashboardIcon />}
+                    isActive={pathname === "/siswa"}
+                    isCollapsed={isSidebarCollapsed}
+                    label="Dashboard"
+                    onNavigate={() => setIsSidebarOpen(false)}
+                  />
 
-              <nav className="no-scrollbar mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
-                <div className="grid gap-2">
-                  {navigationItems.map((item) => {
-                    const isActive =
-                      item.href === "/siswa"
-                        ? pathname === "/siswa"
-                        : pathname === "/siswa";
-
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setIsSidebarOpen(false)}
-                        className={`group rounded-[1.4rem] border px-4 py-3 transition ${
-                          isActive && item.href === "/siswa"
-                            ? "border-sky-200 bg-white text-slate-950 shadow-[0_12px_32px_rgba(14,116,144,0.1)]"
-                            : "border-transparent bg-transparent text-slate-600 hover:border-sky-100 hover:bg-white/80 hover:text-slate-950"
+                  <div className={`rounded-[1.4rem] ${isSidebarCollapsed ? "px-0 py-1" : "px-2 py-1.5"}`}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isSidebarCollapsed) {
+                          setIsLearningMenuOpen((current) => !current);
+                        }
+                      }}
+                      className="flex w-full items-center justify-between gap-3 px-2 py-2 text-left text-[13px] font-medium text-slate-500 transition hover:text-slate-900"
+                    >
+                      <div className={`flex items-center ${isSidebarCollapsed ? "justify-center w-full" : "gap-3"}`}>
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                          <TryoutIcon />
+                        </span>
+                        <span
+                          className={`transition-[max-width,opacity] duration-300 ${
+                            isSidebarCollapsed ? "lg:max-w-0 lg:overflow-hidden lg:opacity-0" : "max-w-[180px] opacity-100"
+                          }`}
+                        >
+                          Aktivitas Belajar
+                        </span>
+                      </div>
+                      <span
+                        className={`transition-[opacity,transform] duration-300 ${
+                          isSidebarCollapsed ? "lg:hidden" : "opacity-100"
                         }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <span
-                            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
-                              isActive && item.href === "/siswa"
-                                ? "bg-sky-100 text-sky-700"
-                                : "bg-slate-100 text-slate-500 group-hover:bg-sky-50 group-hover:text-sky-700"
-                            }`}
-                          >
-                            <StudentNavIcon />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm font-semibold">{item.label}</span>
-                            <span className="mt-1 block text-xs leading-5 text-slate-500">
-                              {item.helper}
-                            </span>
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                        <span className={`block transition-transform duration-300 ${isLearningMenuOpen ? "rotate-180" : ""}`}>
+                          <ChevronDownIcon />
+                        </span>
+                      </span>
+                    </button>
+
+                    <div
+                      className={`overflow-hidden transition-[max-height,opacity,margin,padding] duration-300 ${
+                        isSidebarCollapsed || !isLearningMenuOpen
+                          ? "mt-0 max-h-0 opacity-0"
+                          : "ml-[2.85rem] mt-1 max-h-32 space-y-1.5 pb-1 opacity-100"
+                      }`}
+                    >
+                      <SidebarChildLink
+                        href="/siswa#tryout"
+                        label="Tryout"
+                        onNavigate={() => setIsSidebarOpen(false)}
+                      />
+                      <SidebarChildLink
+                        href="/siswa#hasil"
+                        label="Hasil"
+                        onNavigate={() => setIsSidebarOpen(false)}
+                      />
+                      <SidebarChildLink
+                        href="/siswa#tanggapan"
+                        label="Tanggapan"
+                        onNavigate={() => setIsSidebarOpen(false)}
+                      />
+                    </div>
+                  </div>
+
+                  <SidebarRowLink
+                    href="/siswa#hasil"
+                    icon={<ResultIcon />}
+                    isCollapsed={isSidebarCollapsed}
+                    label="Progres"
+                    onNavigate={() => setIsSidebarOpen(false)}
+                  />
+                  <SidebarRowLink
+                    href="/siswa#tanggapan"
+                    icon={<FeedbackIcon />}
+                    isCollapsed={isSidebarCollapsed}
+                    label="Feedback"
+                    onNavigate={() => setIsSidebarOpen(false)}
+                  />
                 </div>
               </nav>
             </div>
 
-            <div className="border-t border-sky-100 px-4 py-4">
+            <div
+              className={`border-t border-slate-200/80 py-4 transition-[padding] duration-300 ${
+                isSidebarCollapsed ? "lg:px-3" : "px-4"
+              }`}
+            >
+              <p
+                className={`mb-3 text-[10px] leading-5 text-slate-400 transition-[max-height,opacity] duration-300 ${
+                  isSidebarCollapsed ? "lg:max-h-0 lg:overflow-hidden lg:opacity-0" : "max-h-16 opacity-100"
+                }`}
+              >
+                {description}
+              </p>
               <SignOutButton
-                className="w-full rounded-full border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
-                confirmTitle="Keluar dari Area Siswa"
+                className={`w-full rounded-full border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  isSidebarCollapsed ? "lg:px-0" : "px-4"
+                }`}
+                confirmTitle="Keluar dari Dashboard Siswa"
                 pendingLabel="Keluar..."
               />
             </div>
           </div>
         </aside>
 
-        <div className="min-w-0">
-          <div className="sticky top-0 z-30 isolate pb-3 pt-3 lg:pb-4 lg:pt-6">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-3 bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.32),_transparent_32%),linear-gradient(180deg,#f5fbff_0%,#eff6ff_45%,#f8fafc_100%)] lg:h-6" />
-            <header className="relative rounded-[1.8rem] border border-white/90 bg-white px-4 py-4 shadow-[0_18px_48px_rgba(14,116,144,0.08)] sm:px-5 sm:py-5">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0 space-y-2">
+        <div className="min-w-0 lg:bg-[#fbfcff]">
+          <div className="sticky top-3 z-30 pb-4 sm:top-4 sm:pb-5 lg:top-0 lg:pb-0">
+            <header className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white px-4 py-4 shadow-[0_24px_56px_rgba(15,23,42,0.08)] sm:px-5 sm:py-5 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:border-slate-200/80 lg:px-6 lg:py-4 lg:shadow-none">
+              <div className="pointer-events-none absolute right-0 top-0 h-full w-[42%] bg-[radial-gradient(circle_at_80%_20%,rgba(37,99,235,0.14),transparent_22%),radial-gradient(circle_at_88%_78%,rgba(56,189,248,0.12),transparent_24%)]" />
+
+              <div className="relative flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setIsSidebarOpen(true)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-100 bg-white text-slate-700 shadow-[0_8px_20px_rgba(14,116,144,0.08)] transition hover:border-sky-200 hover:text-sky-700 lg:hidden"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition hover:border-blue-200 hover:text-blue-700 lg:hidden"
                     >
                       <MenuIcon />
                     </button>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700 sm:text-xs">
-                      Area Belajar
-                    </p>
+                    <div className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-700">
+                      Student Dashboard
+                    </div>
                   </div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
-                    Selamat datang, {studentName}
-                  </h2>
-                  <p className="max-w-3xl text-sm leading-6 text-slate-600">
-                    Pilih tryout yang tersedia, cek hasilnya setelah selesai, lalu isi tanggapanmu dengan bahasa yang santun dan jelas.
-                  </p>
                 </div>
 
-                <div className="flex w-full flex-wrap items-center gap-3 md:w-auto md:justify-end">
-                  <div className="rounded-full bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700">
-                    Fokus hari ini
+                <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-end">
+                  <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-400 shadow-inner shadow-white xl:min-w-[280px]">
+                    <SearchIcon />
+                    <span className="truncate">Cari tryout, hasil, atau aktivitas belajar</span>
                   </div>
-                  <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">
-                    Ikuti tryout sesuai jadwal
+
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600">
+                      <WeatherIcon />
+                      21°
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600">
+                      <LocationIcon />
+                      Area Belajar
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_100%)] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.24)]">
+                      <CalendarIcon />
+                      Periode Aktif
+                    </div>
                   </div>
                 </div>
               </div>
             </header>
           </div>
 
-          <main className="min-w-0 overflow-x-clip pb-4 pt-4 lg:pt-4">{children}</main>
+          <main className="min-w-0 overflow-x-clip pb-6 lg:px-6 lg:pt-5">{children}</main>
         </div>
       </div>
     </div>
@@ -223,11 +314,222 @@ function CloseIcon() {
   );
 }
 
-function StudentNavIcon() {
+function DashboardIcon() {
   return (
     <svg aria-hidden="true" {...iconProps()}>
-      <path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-      <path d="M5 19.5c1.2-2.5 3.8-4 7-4s5.8 1.5 7 4" />
+      <path d="M4.5 5.5h6v6h-6z" />
+      <path d="M13.5 5.5h6v4h-6z" />
+      <path d="M13.5 12.5h6v6h-6z" />
+      <path d="M4.5 14.5h6v4h-6z" />
+    </svg>
+  );
+}
+
+function TryoutIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M8 4.5h8" />
+      <path d="M8.5 2.5h7A1.5 1.5 0 0 1 17 4v1H7V4a1.5 1.5 0 0 1 1.5-1.5Z" />
+      <path d="M6.5 5.5h11A1.5 1.5 0 0 1 19 7v12A1.5 1.5 0 0 1 17.5 20h-11A1.5 1.5 0 0 1 5 18.5V7A1.5 1.5 0 0 1 6.5 5.5Z" />
+      <path d="M8.5 10.5h7" />
+      <path d="M8.5 14.5h5" />
+    </svg>
+  );
+}
+
+function ResultIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M6 17.5V12" />
+      <path d="M12 17.5V7.5" />
+      <path d="M18 17.5v-4" />
+      <path d="M4 19.5h16" />
+    </svg>
+  );
+}
+
+function FeedbackIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M5.5 7.5A2.5 2.5 0 0 1 8 5h8a2.5 2.5 0 0 1 2.5 2.5v5A2.5 2.5 0 0 1 16 15H11l-3.5 3v-3H8A2.5 2.5 0 0 1 5.5 12.5v-5Z" />
+      <path d="M9 9.5h6" />
+      <path d="M9 12h4" />
+    </svg>
+  );
+}
+
+function SidebarPrimaryLink({
+  href,
+  icon,
+  isActive,
+  isCollapsed,
+  label,
+  onNavigate,
+}: {
+  href: string;
+  icon: ReactNode;
+  isActive: boolean;
+  isCollapsed: boolean;
+  label: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      title={label}
+      className={`flex items-center rounded-full py-3 text-sm font-semibold transition ${
+        isCollapsed ? "justify-center px-0" : "gap-3 px-4"
+      } ${
+        isActive
+          ? "bg-[#e8f0ff] text-blue-700"
+          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+      }`}
+    >
+      <span
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl ${
+          isActive ? "bg-white text-blue-700 shadow-[0_10px_18px_rgba(59,130,246,0.12)]" : "bg-slate-100 text-slate-500"
+        }`}
+      >
+        {icon}
+      </span>
+      <span
+        className={`transition-[max-width,opacity] duration-300 ${
+          isCollapsed ? "lg:max-w-0 lg:overflow-hidden lg:opacity-0" : "max-w-[180px] opacity-100"
+        }`}
+      >
+        {label}
+      </span>
+    </Link>
+  );
+}
+
+function SidebarRowLink({
+  href,
+  icon,
+  isCollapsed,
+  label,
+  onNavigate,
+}: {
+  href: string;
+  icon: ReactNode;
+  isCollapsed: boolean;
+  label: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      title={label}
+      className={`flex items-center rounded-[1.35rem] py-3 text-sm font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 ${
+        isCollapsed ? "justify-center px-0" : "justify-between gap-3 px-4"
+      }`}
+    >
+      <span className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+          {icon}
+        </span>
+        <span
+          className={`transition-[max-width,opacity] duration-300 ${
+            isCollapsed ? "lg:max-w-0 lg:overflow-hidden lg:opacity-0" : "max-w-[180px] opacity-100"
+          }`}
+        >
+          {label}
+        </span>
+      </span>
+      <span className={`${isCollapsed ? "lg:hidden" : "opacity-100"}`}>
+        <ChevronRightIcon />
+      </span>
+    </Link>
+  );
+}
+
+function SidebarChildLink({
+  href,
+  label,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className="block py-1 text-sm text-slate-500 transition hover:text-slate-900"
+    >
+      {label}
+    </Link>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 3.5 3.5" />
+    </svg>
+  );
+}
+
+function WeatherIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M8 16.5h7.5a3 3 0 0 0 .4-6 4.5 4.5 0 0 0-8.8-.8 3 3 0 0 0 .9 5.8Z" />
+    </svg>
+  );
+}
+
+function LocationIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M12 20s5-5 5-9a5 5 0 1 0-10 0c0 4 5 9 5 9Z" />
+      <path d="M12 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M7 4.5v3" />
+      <path d="M17 4.5v3" />
+      <path d="M5.5 8.5h13" />
+      <rect x="4.5" y="6.5" width="15" height="13" rx="2.5" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="m8 10 4 4 4-4" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="m10 8 4 4-4 4" />
+    </svg>
+  );
+}
+
+function CollapseIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M15 5 9 12l6 7" />
+    </svg>
+  );
+}
+
+function ExpandIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="m9 5 6 7-6 7" />
     </svg>
   );
 }
