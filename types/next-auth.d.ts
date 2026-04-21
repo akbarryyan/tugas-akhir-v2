@@ -11,6 +11,7 @@ declare module "next-auth" {
   }
 
   interface User {
+    image?: string | null;
     role: Role;
     authMethod: AuthMethod;
   }

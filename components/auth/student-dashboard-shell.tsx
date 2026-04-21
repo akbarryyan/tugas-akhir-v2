@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthMethod } from "@prisma/client";
@@ -13,7 +14,13 @@ type StudentDashboardShellProps = {
   user: {
     authMethod: AuthMethod;
     email?: string | null;
+    image?: string | null;
     name?: string | null;
+  };
+  weather: {
+    locationLabel: string;
+    periodLabel: string;
+    temperatureLabel: string;
   };
 };
 
@@ -23,6 +30,7 @@ export function StudentDashboardShell({
   children,
   description,
   user,
+  weather,
 }: StudentDashboardShellProps) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -44,6 +52,7 @@ export function StudentDashboardShell({
   const studentName = user.name ?? "Siswa";
   const studentFirstName = studentName.split(" ")[0] ?? studentName;
   const studentInitial = studentName.slice(0, 1).toUpperCase();
+  const studentAvatarUrl = user.image ?? null;
   const isSidebarCollapsedEffective = isDesktopViewport && isSidebarCollapsed;
   const sidebarWidth = isSidebarCollapsedEffective ? "92px" : "240px";
   const isLearningRoute =
@@ -125,9 +134,11 @@ export function StudentDashboardShell({
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#38bdf8_100%)] text-sm font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)]">
-                    {studentInitial}
-                  </div>
+                  <StudentAvatar
+                    image={studentAvatarUrl}
+                    initial={studentInitial}
+                    sizeClassName="h-12 w-12 text-sm"
+                  />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-900">
                       {studentName}
@@ -154,9 +165,11 @@ export function StudentDashboardShell({
               </div>
 
               <div className={`mt-1 hidden text-center lg:block ${isSidebarCollapsedEffective ? "lg:mt-4" : ""}`}>
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#38bdf8_100%)] text-base font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.18)]">
-                  {studentInitial}
-                </div>
+                <StudentAvatar
+                  image={studentAvatarUrl}
+                  initial={studentInitial}
+                  sizeClassName="mx-auto h-14 w-14 text-base"
+                />
                 <p
                   className={`mt-3 text-sm font-semibold text-slate-900 transition-[max-height,opacity,transform] duration-300 ${
                     isSidebarCollapsedEffective
@@ -276,6 +289,14 @@ export function StudentDashboardShell({
                     label="Progres"
                     onNavigate={() => setIsSidebarOpen(false)}
                   />
+                  <SidebarRowLink
+                    href="/siswa/pengaturan"
+                    icon={<SettingsIcon />}
+                    isActive={pathname.startsWith("/siswa/pengaturan")}
+                    isCollapsed={isSidebarCollapsedEffective}
+                    label="Pengaturan"
+                    onNavigate={() => setIsSidebarOpen(false)}
+                  />
                 </div>
               </nav>
             </div>
@@ -333,15 +354,15 @@ export function StudentDashboardShell({
                   <div className="flex flex-wrap items-center gap-2.5">
                     <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 sm:inline-flex">
                       <WeatherIcon />
-                      21°
+                      {weather.temperatureLabel}
                     </div>
                     <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 md:inline-flex">
                       <LocationIcon />
-                      Area Belajar
+                      {weather.locationLabel}
                     </div>
                     <div className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_100%)] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.24)] sm:w-auto">
                       <CalendarIcon />
-                      Periode Aktif
+                      {weather.periodLabel}
                     </div>
                   </div>
                 </div>
@@ -417,6 +438,15 @@ function ResultIcon() {
       <path d="M12 17.5V7.5" />
       <path d="M18 17.5v-4" />
       <path d="M4 19.5h16" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
+      <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.2 1.2a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9v.2a1.2 1.2 0 0 1-1.2 1.2h-1.6a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.2-1.2a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6h-.2A1.2 1.2 0 0 1 2.9 13v-1.6a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.2-1.2a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9v-.2A1.2 1.2 0 0 1 10.2 3h1.6A1.2 1.2 0 0 1 13 4.2v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.2 1.2a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2a1.2 1.2 0 0 1 1.2 1.2V13a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.8Z" />
     </svg>
   );
 }
@@ -538,6 +568,36 @@ function SidebarChildLink({
     >
       {label}
     </Link>
+  );
+}
+
+function StudentAvatar({
+  image,
+  initial,
+  sizeClassName,
+}: {
+  image: string | null;
+  initial: string;
+  sizeClassName: string;
+}) {
+  if (image) {
+    return (
+      <Image
+        src={image}
+        alt="Foto profil siswa"
+        width={56}
+        height={56}
+        className={`${sizeClassName} rounded-full object-cover shadow-[0_12px_24px_rgba(37,99,235,0.18)]`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#38bdf8_100%)] font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.18)] ${sizeClassName}`}
+    >
+      {initial}
+    </div>
   );
 }
 

@@ -73,6 +73,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           name: user.name,
           email: user.email,
+          image: user.avatarUrl,
           role: user.role,
           authMethod: user.authMethod,
         };
@@ -116,6 +117,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           name: user.name,
           email: user.email,
+          image: user.avatarUrl,
           role: user.role,
           authMethod: user.authMethod,
         };
@@ -128,6 +130,7 @@ export const authOptions: NextAuthOptions = {
         token.sub = user.id;
         token.name = user.name;
         token.email = user.email;
+        token.picture = user.image ?? null;
         token.role = user.role;
         token.authMethod = user.authMethod;
       }
@@ -139,6 +142,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub ?? "";
         session.user.name = token.name ?? "";
         session.user.email = typeof token.email === "string" ? token.email : null;
+        session.user.image = typeof token.picture === "string" ? token.picture : null;
         session.user.role = token.role as Role;
         session.user.authMethod = token.authMethod as AuthMethod;
       }
