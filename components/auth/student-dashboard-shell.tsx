@@ -26,6 +26,7 @@ export function StudentDashboardShell({
 }: StudentDashboardShellProps) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -33,20 +34,40 @@ export function StudentDashboardShell({
 
     return window.localStorage.getItem(STORAGE_KEY) === "true";
   });
-  const [isLearningMenuOpen, setIsLearningMenuOpen] = useState(false);
+  const [isLearningMenuOpen, setIsLearningMenuOpen] = useState(() => {
+    return (
+      pathname.startsWith("/siswa/tryout") ||
+      pathname.startsWith("/siswa/hasil") ||
+      pathname.startsWith("/siswa/tanggapan")
+    );
+  });
   const studentName = user.name ?? "Siswa";
   const studentFirstName = studentName.split(" ")[0] ?? studentName;
   const studentInitial = studentName.slice(0, 1).toUpperCase();
-  const sidebarWidth = isSidebarCollapsed ? "92px" : "240px";
+  const isSidebarCollapsedEffective = isDesktopViewport && isSidebarCollapsed;
+  const sidebarWidth = isSidebarCollapsedEffective ? "92px" : "240px";
   const isLearningRoute =
     pathname.startsWith("/siswa/tryout") ||
     pathname.startsWith("/siswa/hasil") ||
     pathname.startsWith("/siswa/tanggapan");
-  const shouldShowLearningMenu = !isSidebarCollapsed && (isLearningRoute || isLearningMenuOpen);
+  const shouldShowLearningMenu = !isSidebarCollapsedEffective && isLearningMenuOpen;
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    const syncViewport = () => {
+      setIsDesktopViewport(window.innerWidth >= 1024);
+    };
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncViewport);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#f6f8fc_100%)] text-slate-900">
@@ -55,26 +76,40 @@ export function StudentDashboardShell({
           type="button"
           aria-label="Tutup menu siswa"
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-950/24 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/24 backdrop-blur-[2px] transition-opacity duration-300 ease-out lg:hidden"
         />
       ) : null}
 
       <div
-        className="mx-auto flex min-h-screen w-full max-w-[1520px] gap-4 overflow-x-clip px-3 py-3 sm:px-5 sm:py-4 lg:grid lg:items-start lg:gap-0 lg:rounded-[2.1rem] lg:border lg:border-slate-200/80 lg:bg-white lg:px-0 lg:py-0 lg:shadow-[0_26px_62px_rgba(15,23,42,0.08)] lg:[grid-template-columns:var(--student-sidebar-width)_minmax(0,1fr)]"
+        className="mx-auto flex min-h-screen w-full max-w-[1520px] gap-4 overflow-x-clip px-3 py-3 sm:px-4 sm:py-4 lg:grid lg:items-start lg:gap-0 lg:rounded-[2.1rem] lg:border lg:border-slate-200/80 lg:bg-white lg:px-0 lg:py-0 lg:shadow-[0_26px_62px_rgba(15,23,42,0.08)] lg:[grid-template-columns:var(--student-sidebar-width)_minmax(0,1fr)]"
         style={{ "--student-sidebar-width": sidebarWidth } as CSSProperties}
       >
         <aside
-          className={`fixed inset-y-3 left-3 z-50 w-[min(320px,calc(100vw-1.5rem))] overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcff_100%)] shadow-[0_24px_60px_rgba(15,23,42,0.1)] transition-[transform,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:self-start lg:w-auto lg:translate-x-0 lg:rounded-none lg:border-0 lg:border-r lg:border-slate-200/80 lg:shadow-none ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-[108%] lg:translate-x-0"
+          className={`fixed inset-0 z-50 w-screen overflow-hidden bg-white transition-[transform,opacity,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:self-start lg:w-auto lg:bg-[linear-gradient(180deg,#ffffff_0%,#fbfcff_100%)] lg:translate-x-0 lg:border-0 lg:border-r lg:border-slate-200/80 lg:shadow-none ${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
         >
-          <div className="flex h-full min-h-0 flex-col">
+          <div
+            className={`flex h-full min-h-0 flex-col border-r-0 border-slate-200/80 px-4 py-4 transition-[opacity,transform] duration-300 ease-out lg:border-r lg:px-0 lg:py-0 ${
+              isSidebarOpen
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-2 lg:translate-y-0 lg:opacity-100"
+            }`}
+          >
             <div
-              className={`border-b border-slate-200/80 pb-5 pt-5 transition-[padding] duration-300 ${
-                isSidebarCollapsed ? "lg:px-3" : "px-5"
+              className={`border-b border-slate-200/80 pb-4 pt-1 transition-[padding] duration-300 lg:pb-5 ${
+                isSidebarCollapsedEffective ? "lg:px-3" : "px-5"
               }`}
             >
-              <div className="flex justify-end lg:hidden">
+              <div className="flex items-center justify-between lg:hidden">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">
+                    Menu Siswa
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Pilih halaman belajar yang ingin kamu buka.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setIsSidebarOpen(false)}
@@ -84,24 +119,47 @@ export function StudentDashboardShell({
                 </button>
               </div>
 
-              <div className={`hidden lg:flex ${isSidebarCollapsed ? "justify-center" : "justify-end"}`}>
+              <div
+                className={`mt-4 rounded-[1.65rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_32px_rgba(15,23,42,0.05)] transition-[opacity,transform] duration-300 ease-out lg:hidden ${
+                  isSidebarOpen ? "opacity-100 translate-y-0 delay-75" : "opacity-0 translate-y-2"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#38bdf8_100%)] text-sm font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)]">
+                    {studentInitial}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {studentName}
+                    </p>
+                    <p className="mt-1 truncate text-xs leading-5 text-slate-400">
+                      {user.email ??
+                        (user.authMethod === AuthMethod.NISN
+                          ? "Akun siswa aktif"
+                          : "Akun portal")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`hidden lg:flex ${isSidebarCollapsedEffective ? "justify-center" : "justify-end"}`}>
                 <button
                   type="button"
                   onClick={() => setIsSidebarCollapsed((current) => !current)}
-                  title={isSidebarCollapsed ? "Buka sidebar" : "Ringkas sidebar"}
+                  title={isSidebarCollapsedEffective ? "Buka sidebar" : "Ringkas sidebar"}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-200 hover:text-blue-700"
                 >
-                  {isSidebarCollapsed ? <ExpandIcon /> : <CollapseIcon />}
+                  {isSidebarCollapsedEffective ? <ExpandIcon /> : <CollapseIcon />}
                 </button>
               </div>
 
-              <div className={`mt-1 text-center ${isSidebarCollapsed ? "lg:mt-4" : ""}`}>
+              <div className={`mt-1 hidden text-center lg:block ${isSidebarCollapsedEffective ? "lg:mt-4" : ""}`}>
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#38bdf8_100%)] text-base font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.18)]">
                   {studentInitial}
                 </div>
                 <p
                   className={`mt-3 text-sm font-semibold text-slate-900 transition-[max-height,opacity,transform] duration-300 ${
-                    isSidebarCollapsed
+                    isSidebarCollapsedEffective
                       ? "lg:max-h-0 lg:-translate-y-1 lg:overflow-hidden lg:opacity-0"
                       : "max-h-10 translate-y-0 opacity-100"
                   }`}
@@ -110,7 +168,7 @@ export function StudentDashboardShell({
                 </p>
                 <p
                   className={`mt-1 text-[11px] leading-5 text-slate-400 transition-[max-height,opacity,transform] duration-300 ${
-                    isSidebarCollapsed
+                    isSidebarCollapsedEffective
                       ? "lg:max-h-0 lg:-translate-y-1 lg:overflow-hidden lg:opacity-0"
                       : "max-h-10 translate-y-0 opacity-100"
                   }`}
@@ -122,37 +180,54 @@ export function StudentDashboardShell({
 
             <div
               className={`flex min-h-0 flex-1 flex-col py-4 transition-[padding] duration-300 ${
-                isSidebarCollapsed ? "lg:px-3" : "px-4"
+                isSidebarCollapsedEffective ? "lg:px-3" : "px-4"
               }`}
             >
-              <nav className="no-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+              <div
+                className={`mb-3 px-1 transition-[opacity,transform] duration-300 ease-out lg:hidden ${
+                  isSidebarOpen ? "opacity-100 translate-y-0 delay-100" : "opacity-0 translate-y-2"
+                }`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Navigasi Belajar
+                </p>
+              </div>
+              <nav
+                className={`no-scrollbar min-h-0 flex-1 overflow-y-auto pr-1 transition-[opacity,transform] duration-300 ease-out lg:translate-y-0 lg:opacity-100 ${
+                  isSidebarOpen ? "opacity-100 translate-y-0 delay-150" : "opacity-0 translate-y-3"
+                }`}
+              >
                 <div className="space-y-1">
                   <SidebarPrimaryLink
                     href="/siswa"
                     icon={<DashboardIcon />}
                     isActive={pathname === "/siswa"}
-                    isCollapsed={isSidebarCollapsed}
+                    isCollapsed={isSidebarCollapsedEffective}
                     label="Dashboard"
                     onNavigate={() => setIsSidebarOpen(false)}
                   />
 
-                  <div className={`rounded-[1.4rem] ${isSidebarCollapsed ? "px-0 py-1" : "px-2 py-1.5"}`}>
+                  <div className={`rounded-[1.4rem] ${isSidebarCollapsedEffective ? "px-0 py-1" : "px-2 py-1.5"}`}>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!isSidebarCollapsed) {
-                          setIsLearningMenuOpen((current) => !current);
-                        }
-                      }}
-                      className="flex w-full items-center justify-between gap-3 px-2 py-2 text-left text-[13px] font-medium text-slate-500 transition hover:text-slate-900"
+                      onClick={() => setIsLearningMenuOpen((current) => !current)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-full px-2 py-2 text-left text-[13px] font-medium transition ${
+                        isLearningRoute
+                          ? "bg-[#e8f0ff] text-blue-700"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
                     >
-                      <div className={`flex items-center ${isSidebarCollapsed ? "justify-center w-full" : "gap-3"}`}>
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl text-slate-500">
+                      <div className={`flex items-center ${isSidebarCollapsedEffective ? "justify-center w-full" : "gap-2"}`}>
+                        <span
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl ${
+                            isLearningRoute ? "text-blue-700" : "text-slate-500"
+                          }`}
+                        >
                           <TryoutIcon />
                         </span>
                         <span
                           className={`transition-[max-width,opacity] duration-300 ${
-                            isSidebarCollapsed ? "lg:max-w-0 lg:overflow-hidden lg:opacity-0" : "max-w-[180px] opacity-100"
+                            isSidebarCollapsedEffective ? "lg:max-w-0 lg:overflow-hidden lg:opacity-0" : "max-w-[180px] opacity-100"
                           }`}
                         >
                           Aktivitas Belajar
@@ -160,7 +235,7 @@ export function StudentDashboardShell({
                       </div>
                       <span
                         className={`transition-[opacity,transform] duration-300 ${
-                          isSidebarCollapsed ? "lg:hidden" : "opacity-100"
+                          isSidebarCollapsedEffective ? "lg:hidden" : "opacity-100"
                         }`}
                       >
                         <span className={`block transition-transform duration-300 ${shouldShowLearningMenu ? "rotate-180" : ""}`}>
@@ -169,39 +244,35 @@ export function StudentDashboardShell({
                       </span>
                     </button>
 
-                    <div
-                      className={`overflow-hidden transition-[max-height,opacity,margin,padding] duration-300 ${
-                        !shouldShowLearningMenu
-                          ? "mt-0 max-h-0 opacity-0"
-                          : "ml-[2.85rem] mt-1 max-h-32 space-y-1.5 pb-1 opacity-100"
-                      }`}
-                    >
-                      <SidebarChildLink
-                        href="/siswa/tryout"
-                        label="Tryout"
-                        isActive={pathname.startsWith("/siswa/tryout")}
-                        onNavigate={() => setIsSidebarOpen(false)}
-                      />
-                      <SidebarChildLink
-                        href="/siswa/hasil"
-                        label="Hasil"
-                        isActive={pathname.startsWith("/siswa/hasil")}
-                        onNavigate={() => setIsSidebarOpen(false)}
-                      />
-                      <SidebarChildLink
-                        href="/siswa/tanggapan"
-                        label="Tanggapan"
-                        isActive={pathname.startsWith("/siswa/tanggapan")}
-                        onNavigate={() => setIsSidebarOpen(false)}
-                      />
-                    </div>
+                    {shouldShowLearningMenu ? (
+                      <div className="space-y-1.5 pl-11 pt-1 sm:pl-[2.85rem]">
+                        <SidebarChildLink
+                          href="/siswa/tryout"
+                          label="Tryout"
+                          isActive={pathname.startsWith("/siswa/tryout")}
+                          onNavigate={() => setIsSidebarOpen(false)}
+                        />
+                        <SidebarChildLink
+                          href="/siswa/hasil"
+                          label="Hasil"
+                          isActive={pathname.startsWith("/siswa/hasil")}
+                          onNavigate={() => setIsSidebarOpen(false)}
+                        />
+                        <SidebarChildLink
+                          href="/siswa/tanggapan"
+                          label="Tanggapan"
+                          isActive={pathname.startsWith("/siswa/tanggapan")}
+                          onNavigate={() => setIsSidebarOpen(false)}
+                        />
+                      </div>
+                    ) : null}
                   </div>
 
                   <SidebarRowLink
                     href="/siswa/progres"
                     icon={<ResultIcon />}
                     isActive={pathname.startsWith("/siswa/progres")}
-                    isCollapsed={isSidebarCollapsed}
+                    isCollapsed={isSidebarCollapsedEffective}
                     label="Progres"
                     onNavigate={() => setIsSidebarOpen(false)}
                   />
@@ -211,19 +282,19 @@ export function StudentDashboardShell({
 
             <div
               className={`border-t border-slate-200/80 py-4 transition-[padding] duration-300 ${
-                isSidebarCollapsed ? "lg:px-3" : "px-4"
+                isSidebarCollapsedEffective ? "lg:px-3" : "px-4"
               }`}
             >
               <p
-                className={`mb-3 text-[10px] leading-5 text-slate-400 transition-[max-height,opacity] duration-300 ${
-                  isSidebarCollapsed ? "lg:max-h-0 lg:overflow-hidden lg:opacity-0" : "max-h-16 opacity-100"
+                className={`mb-3 hidden text-[10px] leading-5 text-slate-400 transition-[max-height,opacity] duration-300 lg:block ${
+                  isSidebarCollapsedEffective ? "lg:max-h-0 lg:overflow-hidden lg:opacity-0" : "max-h-16 opacity-100"
                 }`}
               >
                 {description}
               </p>
               <SignOutButton
                 className={`w-full rounded-full border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60 ${
-                  isSidebarCollapsed ? "lg:px-0" : "px-4"
+                  isSidebarCollapsedEffective ? "lg:px-0" : "px-4"
                 }`}
                 confirmTitle="Keluar dari Dashboard Siswa"
                 pendingLabel="Keluar..."
@@ -234,10 +305,10 @@ export function StudentDashboardShell({
 
         <div className="min-w-0 lg:bg-[#fbfcff]">
           <div className="sticky top-3 z-30 pb-4 sm:top-4 sm:pb-5 lg:top-0 lg:pb-0">
-            <header className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white px-4 py-4 shadow-[0_24px_56px_rgba(15,23,42,0.08)] sm:px-5 sm:py-5 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:border-slate-200/80 lg:px-6 lg:py-4 lg:shadow-none">
+            <header className="relative overflow-hidden rounded-[1.6rem] border border-white/80 bg-white px-3.5 py-3.5 shadow-[0_20px_48px_rgba(15,23,42,0.08)] sm:px-5 sm:py-5 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:border-b lg:border-slate-200/80 lg:px-6 lg:py-4 lg:shadow-none">
               <div className="pointer-events-none absolute right-0 top-0 h-full w-[42%] bg-[radial-gradient(circle_at_80%_20%,rgba(37,99,235,0.14),transparent_22%),radial-gradient(circle_at_88%_78%,rgba(56,189,248,0.12),transparent_24%)]" />
 
-              <div className="relative flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="relative flex flex-col gap-3 lg:gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex items-center gap-3">
                     <button
@@ -247,28 +318,28 @@ export function StudentDashboardShell({
                     >
                       <MenuIcon />
                     </button>
-                    <div className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-700">
+                    <div className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-700 sm:text-[11px]">
                       Student Dashboard
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-end">
-                  <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-400 shadow-inner shadow-white xl:min-w-[280px]">
+                <div className="flex flex-col gap-2.5 md:flex-row md:flex-wrap md:items-center md:justify-end">
+                  <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-400 shadow-inner shadow-white md:min-w-[250px] xl:min-w-[280px]">
                     <SearchIcon />
                     <span className="truncate">Cari tryout, hasil, atau aktivitas belajar</span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600">
+                    <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 sm:inline-flex">
                       <WeatherIcon />
                       21°
                     </div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600">
+                    <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 md:inline-flex">
                       <LocationIcon />
                       Area Belajar
                     </div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_100%)] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.24)]">
+                    <div className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_100%)] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.24)] sm:w-auto">
                       <CalendarIcon />
                       Periode Aktif
                     </div>
@@ -371,7 +442,7 @@ function SidebarPrimaryLink({
       onClick={onNavigate}
       title={label}
       className={`flex items-center rounded-full py-3 text-sm font-semibold transition ${
-        isCollapsed ? "justify-center px-0" : "gap-2.5 px-4"
+        isCollapsed ? "justify-center px-0" : "gap-2 px-4"
       } ${
         isActive
           ? "bg-[#e8f0ff] text-blue-700"
@@ -417,14 +488,14 @@ function SidebarRowLink({
       onClick={onNavigate}
       title={label}
       className={`flex items-center rounded-[1.35rem] py-3 text-sm font-medium transition ${
-        isCollapsed ? "justify-center px-0" : "gap-2.5 px-4"
+        isCollapsed ? "justify-center px-0" : "gap-2 px-4"
       } ${
         isActive
-          ? "bg-slate-50 text-slate-900"
+          ? "bg-[#e8f0ff] text-blue-700"
           : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
       }`}
     >
-      <span className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5"}`}>
+      <span className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2"}`}>
         <span
           className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl ${
             isActive ? "text-blue-700" : "text-slate-500"
@@ -511,14 +582,6 @@ function ChevronDownIcon() {
   return (
     <svg aria-hidden="true" {...iconProps()}>
       <path d="m8 10 4 4 4-4" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg aria-hidden="true" {...iconProps()}>
-      <path d="m10 8 4 4-4 4" />
     </svg>
   );
 }
