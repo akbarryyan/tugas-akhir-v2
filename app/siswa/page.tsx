@@ -318,25 +318,25 @@ export default async function SiswaPage() {
 
             <div className="mt-6 flex min-h-[220px] items-end justify-between gap-3 sm:gap-4">
               <StatisticBar
-                color="from-orange-400 to-amber-300"
+                color="linear-gradient(180deg, #fb923c 0%, #fcd34d 100%)"
                 heightPercent={Math.max(24, Math.min(100, availableTryoutCount * 20))}
                 label="Tryout"
                 value={String(availableTryoutCount)}
               />
               <StatisticBar
-                color="from-blue-600 to-sky-400"
+                color="linear-gradient(180deg, #2563eb 0%, #38bdf8 100%)"
                 heightPercent={Math.max(24, completionRate)}
                 label="Progres"
                 value={`${completionRate}%`}
               />
               <StatisticBar
-                color="from-emerald-500 to-green-300"
+                color="linear-gradient(180deg, #10b981 0%, #86efac 100%)"
                 heightPercent={Math.max(24, Math.min(100, completedTryoutCount * 18))}
                 label="Hasil"
                 value={String(completedTryoutCount)}
               />
               <StatisticBar
-                color="from-fuchsia-500 to-pink-300"
+                color="linear-gradient(180deg, #d946ef 0%, #f9a8d4 100%)"
                 heightPercent={Math.max(18, feedbackCompletionRate)}
                 label="Feedback"
                 value={`${feedbackCompletionRate}%`}
@@ -697,10 +697,16 @@ function StatisticBar({
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center justify-end gap-3">
       <span className="text-sm font-semibold text-slate-700">{value}</span>
-      <div className="relative flex h-[150px] w-full items-end justify-center rounded-[1.5rem] bg-white px-2 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.85)] sm:h-[170px]">
+      <div className="relative flex h-[150px] w-full items-end justify-center overflow-hidden rounded-[1.5rem] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-2 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.85)] sm:h-[170px]">
+        <div className="pointer-events-none absolute inset-x-2 top-6 h-px bg-slate-200/70" />
+        <div className="pointer-events-none absolute inset-x-2 top-1/2 h-px bg-slate-200/70" />
+        <div className="pointer-events-none absolute inset-x-2 bottom-6 h-px bg-slate-200/70" />
         <div
-          className={`w-full rounded-[1.2rem] bg-[linear-gradient(180deg,var(--tw-gradient-stops))] ${color} transition-[height] duration-500`}
-          style={{ height: `${heightPercent}%` }}
+          className="relative z-[1] w-full rounded-[1.2rem] shadow-[0_14px_28px_rgba(15,23,42,0.1)] transition-[height] duration-500"
+          style={{
+            background: color,
+            height: `${heightPercent}%`,
+          }}
         />
       </div>
       <span className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">

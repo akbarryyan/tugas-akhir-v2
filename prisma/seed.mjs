@@ -84,7 +84,7 @@ async function seedTeacher() {
     },
   });
 
-  await prisma.teacherProfile.upsert({
+  return prisma.teacherProfile.upsert({
     where: {
       nip: "198812312024011001",
     },
@@ -109,7 +109,7 @@ async function seedStudent() {
   });
 
   if (existingStudent) {
-    await prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: {
           id: existingStudent.userId,
@@ -121,7 +121,7 @@ async function seedStudent() {
         },
       });
 
-      await tx.studentProfile.update({
+      return tx.studentProfile.update({
         where: {
           id: existingStudent.id,
         },
@@ -130,8 +130,6 @@ async function seedStudent() {
         },
       });
     });
-
-    return;
   }
 
   const studentUser = await prisma.user.create({
@@ -142,7 +140,7 @@ async function seedStudent() {
     },
   });
 
-  await prisma.studentProfile.create({
+  return prisma.studentProfile.create({
     data: {
       className: "XII IPA 1",
       nisn: "1234567890",
@@ -151,15 +149,259 @@ async function seedStudent() {
   });
 }
 
+async function seedTryoutFlowData({ studentProfileId, teacherProfileId }) {
+  const subject = await prisma.subject.upsert({
+    where: {
+      name: "Agama",
+    },
+    create: {
+      description: "Mata pelajaran untuk pengujian alur tryout siswa.",
+      isActive: true,
+      name: "Agama",
+    },
+    update: {
+      description: "Mata pelajaran untuk pengujian alur tryout siswa.",
+      isActive: true,
+    },
+  });
+
+  await prisma.subjectTeacher.upsert({
+    where: {
+      subjectId_teacherId: {
+        subjectId: subject.id,
+        teacherId: teacherProfileId,
+      },
+    },
+    create: {
+      subjectId: subject.id,
+      teacherId: teacherProfileId,
+    },
+    update: {},
+  });
+
+  const questionFixtures = [
+    {
+      correctOption: "C",
+      explanation: "Rukun iman berjumlah enam.",
+      optionA: "Empat",
+      optionB: "Lima",
+      optionC: "Enam",
+      optionD: "Tujuh",
+      questionText: "Berapa jumlah rukun iman?",
+    },
+    {
+      correctOption: "B",
+      explanation: "Kitab suci umat Islam adalah Al-Qur'an.",
+      optionA: "Injil",
+      optionB: "Al-Qur'an",
+      optionC: "Taurat",
+      optionD: "Zabur",
+      questionText: "Kitab suci umat Islam adalah?",
+    },
+    {
+      correctOption: "A",
+      explanation: "Salat Subuh terdiri dari 2 rakaat.",
+      optionA: "2 rakaat",
+      optionB: "3 rakaat",
+      optionC: "4 rakaat",
+      optionD: "5 rakaat",
+      questionText: "Jumlah rakaat salat Subuh adalah?",
+    },
+    {
+      correctOption: "D",
+      explanation: "Puasa Ramadan hukumnya wajib bagi muslim yang memenuhi syarat.",
+      optionA: "Sunnah",
+      optionB: "Makruh",
+      optionC: "Mubah",
+      optionD: "Wajib",
+      questionText: "Hukum puasa Ramadan bagi muslim yang memenuhi syarat adalah?",
+    },
+    {
+      correctOption: "B",
+      explanation: "Zakat fitrah ditunaikan sebelum salat Idulfitri.",
+      optionA: "Sesudah Idulfitri",
+      optionB: "Sebelum salat Idulfitri",
+      optionC: "Awal Ramadan saja",
+      optionD: "Kapan saja tanpa batas",
+      questionText: "Waktu utama membayar zakat fitrah adalah?",
+    },
+  ];
+
+  const questions = [];
+
+  for (const [index, fixture] of questionFixtures.entries()) {
+    const existingQuestion = await prisma.question.findFirst({
+      where: {
+        createdByTeacherId: teacherProfileId,
+        questionText: fixture.questionText,
+        subjectId: subject.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const question = existingQuestion
+      ? await prisma.question.update({
+          where: {
+            id: existingQuestion.id,
+          },
+          data: {
+            correctOption: fixture.correctOption,
+            explanation: fixture.explanation,
+            isActive: true,
+            optionA: fixture.optionA,
+            optionB: fixture.optionB,
+            optionC: fixture.optionC,
+            optionD: fixture.optionD,
+            questionText: fixture.questionText,
+            subjectId: subject.id,
+          },
+        })
+      : await prisma.question.create({
+          data: {
+            correctOption: fixture.correctOption,
+            createdByTeacherId: teacherProfileId,
+            explanation: fixture.explanation,
+            isActive: true,
+            optionA: fixture.optionA,
+            optionB: fixture.optionB,
+            optionC: fixture.optionC,
+            optionD: fixture.optionD,
+            questionText: fixture.questionText,
+            subjectId: subject.id,
+          },
+        });
+
+    questions[index] = question;
+  }
+
+  const existingBankSoal = await prisma.bankSoal.findFirst({
+    where: {
+      createdByTeacherId: teacherProfileId,
+      subjectId: subject.id,
+      title: "Bank Soal Agama 1",
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const bankSoal = existingBankSoal
+    ? await prisma.bankSoal.update({
+        where: {
+          id: existingBankSoal.id,
+        },
+        data: {
+          description: "Bank soal fixture untuk pengujian alur tryout siswa.",
+          isActive: true,
+        },
+      })
+    : await prisma.bankSoal.create({
+        data: {
+          createdByTeacherId: teacherProfileId,
+          description: "Bank soal fixture untuk pengujian alur tryout siswa.",
+          isActive: true,
+          subjectId: subject.id,
+          title: "Bank Soal Agama 1",
+        },
+      });
+
+  await prisma.bankSoalQuestion.deleteMany({
+    where: {
+      bankSoalId: bankSoal.id,
+    },
+  });
+
+  await prisma.bankSoalQuestion.createMany({
+    data: questions.map((question, index) => ({
+      bankSoalId: bankSoal.id,
+      orderNumber: index + 1,
+      questionId: question.id,
+    })),
+  });
+
+  const existingTryout = await prisma.tryout.findFirst({
+    where: {
+      createdByTeacherId: teacherProfileId,
+      subjectId: subject.id,
+      title: "Tryout E2E Agama 1",
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const tryout = existingTryout
+    ? await prisma.tryout.update({
+        where: {
+          id: existingTryout.id,
+        },
+        data: {
+          bankSoalId: bankSoal.id,
+          description: "Tryout fixture untuk menguji flow siswa dari mulai sampai submit hasil.",
+          durationMinutes: 25,
+          isPublished: true,
+          subjectId: subject.id,
+        },
+      })
+    : await prisma.tryout.create({
+        data: {
+          bankSoalId: bankSoal.id,
+          createdByTeacherId: teacherProfileId,
+          description: "Tryout fixture untuk menguji flow siswa dari mulai sampai submit hasil.",
+          durationMinutes: 25,
+          isPublished: true,
+          subjectId: subject.id,
+          title: "Tryout E2E Agama 1",
+        },
+      });
+
+  await prisma.tryoutQuestion.deleteMany({
+    where: {
+      tryoutId: tryout.id,
+    },
+  });
+
+  await prisma.tryoutQuestion.createMany({
+    data: questions.map((question, index) => ({
+      orderNumber: index + 1,
+      questionId: question.id,
+      tryoutId: tryout.id,
+    })),
+  });
+
+  await prisma.tryoutSession.deleteMany({
+    where: {
+      studentId: studentProfileId,
+      tryoutId: tryout.id,
+    },
+  });
+
+  return {
+    questionCount: questions.length,
+    subjectName: subject.name,
+    tryoutTitle: tryout.title,
+  };
+}
+
 async function main() {
   await seedAdmin();
-  await seedTeacher();
-  await seedStudent();
+  const teacherProfile = await seedTeacher();
+  const studentProfile = await seedStudent();
+  const tryoutFlowData = await seedTryoutFlowData({
+    studentProfileId: studentProfile.id,
+    teacherProfileId: teacherProfile.id,
+  });
 
   console.log("Seed selesai dibuat.");
   console.log("Admin  : admin@sekolah.sch.id / Admin123!");
   console.log("Guru   : guru@sekolah.sch.id / Guru123!");
   console.log("Siswa  : NISN 1234567890");
+  console.log(
+    `Tryout : ${tryoutFlowData.tryoutTitle} (${tryoutFlowData.subjectName}, ${tryoutFlowData.questionCount} soal)`,
+  );
+  console.log("Catatan: sesi tryout siswa untuk fixture ini direset agar flow bisa dites ulang.");
 }
 
 main()

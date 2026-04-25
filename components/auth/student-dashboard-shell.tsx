@@ -59,6 +59,8 @@ export function StudentDashboardShell({
     pathname.startsWith("/siswa/tryout") ||
     pathname.startsWith("/siswa/hasil") ||
     pathname.startsWith("/siswa/tanggapan");
+  const isExamRoute =
+    pathname.startsWith("/siswa/tryout/") && pathname.endsWith("/kerjakan");
   const shouldShowLearningMenu = !isSidebarCollapsedEffective && isLearningMenuOpen;
 
   useEffect(() => {
@@ -77,6 +79,14 @@ export function StudentDashboardShell({
       window.removeEventListener("resize", syncViewport);
     };
   }, []);
+
+  if (isExamRoute) {
+    return (
+      <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#f6f8fc_100%)] text-slate-900">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#f6f8fc_100%)] text-slate-900">

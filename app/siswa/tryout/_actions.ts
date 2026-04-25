@@ -36,8 +36,39 @@ function getErrorMessage(error: unknown) {
   return "Terjadi kesalahan saat menyimpan hasil tryout.";
 }
 
+function getRedirectPath(
+  formData: FormData,
+  fieldName: "errorRedirectPath" | "successRedirectPath",
+  fallbackPath: string,
+) {
+  const value = formData.get(fieldName);
+
+  if (typeof value !== "string") {
+    return fallbackPath;
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue.startsWith("/siswa/tryout/")) {
+    return fallbackPath;
+  }
+
+  return trimmedValue || fallbackPath;
+}
+
 export async function submitTryoutAnswersAction(formData: FormData) {
   const tryoutId = String(formData.get("tryoutId") ?? "").trim();
+  const defaultDetailPath = `/siswa/tryout/${tryoutId}`;
+  const errorRedirectPath = getRedirectPath(
+    formData,
+    "errorRedirectPath",
+    defaultDetailPath,
+  );
+  const successRedirectPath = getRedirectPath(
+    formData,
+    "successRedirectPath",
+    defaultDetailPath,
+  );
 
   if (!tryoutId) {
     redirectWithMessage("/siswa", "error", "Tryout tidak valid untuk diproses.");
@@ -71,9 +102,21 @@ export async function submitTryoutAnswersAction(formData: FormData) {
         subject: {
           isActive: true,
         },
+        tryoutQuestions: {
+          some: {
+            question: {
+              isActive: true,
+            },
+          },
+        },
       },
       include: {
         tryoutQuestions: {
+          where: {
+            question: {
+              isActive: true,
+            },
+          },
           orderBy: {
             orderNumber: "asc",
           },
@@ -117,6 +160,23 @@ export async function submitTryoutAnswersAction(formData: FormData) {
     const score = Number(((correctAnswers / totalQuestions) * 100).toFixed(2));
 
     await prisma.$transaction(async (tx) => {
+      const existingCompletedSession = await tx.tryoutSession.findFirst({
+        where: {
+          studentId: studentProfile.id,
+          tryoutId,
+          status: {
+            in: [TryoutStatus.SUBMITTED, TryoutStatus.GRADED],
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (existingCompletedSession) {
+        throw new Error("Tryout ini sudah pernah kamu kirim dan tidak bisa dikerjakan ulang.");
+      }
+
       const existingDraftSession = await tx.tryoutSession.findFirst({
         where: {
           studentId: studentProfile.id,
@@ -174,16 +234,18 @@ export async function submitTryoutAnswersAction(formData: FormData) {
     });
   } catch (error) {
     redirectWithMessage(
-      `/siswa/tryout/${tryoutId}`,
+      errorRedirectPath,
       "error",
       getErrorMessage(error),
     );
   }
 
   revalidatePath("/siswa");
+  revalidatePath("/siswa/tryout");
   revalidatePath(`/siswa/tryout/${tryoutId}`);
+  revalidatePath(`/siswa/tryout/${tryoutId}/kerjakan`);
   redirectWithMessage(
-    `/siswa/tryout/${tryoutId}`,
+    successRedirectPath,
     "success",
     "Jawaban tryout berhasil dikirim dan dinilai.",
   );

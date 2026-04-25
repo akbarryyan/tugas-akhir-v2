@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TryoutStatus } from "@prisma/client";
 
+import { StartTryoutButton } from "@/app/siswa/tryout/_start-tryout-button";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
@@ -362,12 +363,27 @@ function TryoutListCard({
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <Link
-          href={`/siswa/tryout/${tryoutId}`}
-          className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] transition hover:bg-blue-500"
-        >
-          {status === "Belum Dikerjakan" ? "Mulai Tryout" : "Lihat Detail"}
-        </Link>
+        {status === "Belum Dikerjakan" ? (
+          <>
+            <StartTryoutButton
+              href={`/siswa/tryout/${tryoutId}/kerjakan`}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+            />
+            <Link
+              href={`/siswa/tryout/${tryoutId}`}
+              className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Lihat Ringkasan
+            </Link>
+          </>
+        ) : (
+          <Link
+            href={`/siswa/tryout/${tryoutId}`}
+            className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] transition hover:bg-blue-500"
+          >
+            Lihat Detail
+          </Link>
+        )}
         <span className="text-sm text-slate-500">
           {status === "Perlu Tanggapan"
             ? "Cek hasil dan lanjutkan pengisian tanggapan."

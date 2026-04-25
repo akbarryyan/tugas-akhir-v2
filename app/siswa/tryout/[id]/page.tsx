@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { AnswerOption, TryoutStatus } from "@prisma/client";
+import { TryoutStatus } from "@prisma/client";
 
 import { StatusAlert } from "@/app/admin/_components";
-import { LoadingSubmitButton } from "@/app/admin/_client-actions";
-import { submitTryoutAnswersAction } from "@/app/siswa/tryout/_actions";
+import { StartTryoutButton } from "@/app/siswa/tryout/_start-tryout-button";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
@@ -42,6 +41,13 @@ export default async function SiswaTryoutDetailPage({
       subject: {
         isActive: true,
       },
+      tryoutQuestions: {
+        some: {
+          question: {
+            isActive: true,
+          },
+        },
+      },
     },
     include: {
       subject: {
@@ -50,6 +56,11 @@ export default async function SiswaTryoutDetailPage({
         },
       },
       tryoutQuestions: {
+        where: {
+          question: {
+            isActive: true,
+          },
+        },
         orderBy: {
           orderNumber: "asc",
         },
@@ -119,6 +130,31 @@ export default async function SiswaTryoutDetailPage({
             className="mt-6 inline-flex h-11 items-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             Kembali ke Daftar Tryout
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
+  if (!studentProfile) {
+    return (
+      <div className="space-y-6">
+        <section className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+            Detail Tryout
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+            Profil siswa belum siap
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+            Lengkapi atau sinkronkan profil siswa terlebih dahulu agar tryout bisa dikerjakan
+            dengan aman dan hasilnya tercatat pada akunmu.
+          </p>
+          <Link
+            href="/siswa/pengaturan"
+            className="mt-6 inline-flex h-11 items-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Buka Pengaturan Profil
           </Link>
         </section>
       </div>
@@ -268,79 +304,81 @@ export default async function SiswaTryoutDetailPage({
           </section>
         </section>
       ) : (
-        <form action={submitTryoutAnswersAction} className="space-y-5">
-          <input type="hidden" name="tryoutId" value={tryout.id} />
+        <section className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <StudentSummaryCard
+              label="Jumlah Soal"
+              value={String(tryout.tryoutQuestions.length)}
+              description="Semua soal aktif yang akan muncul pada mode ujian."
+            />
+            <StudentSummaryCard
+              label="Durasi"
+              value={tryout.durationMinutes ? `${tryout.durationMinutes} mnt` : "Fleksibel"}
+              description="Gunakan alokasi waktu ini sebagai panduan saat mengerjakan."
+            />
+            <StudentSummaryCard
+              label="Status"
+              value="Siap Dikerjakan"
+              description="Tryout belum pernah kamu kirim dan siap dimulai sekarang."
+            />
+          </div>
 
           <section className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
-                  Pengerjaan Tryout
+                  Ringkasan Pengerjaan
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-slate-950">
-                  Jawab seluruh soal dengan teliti
+                  Masuk ke mode ujian saat kamu sudah siap
                 </h2>
               </div>
               <p className="text-sm text-slate-500">
-                Pastikan semua soal sudah terisi sebelum kamu mengirim jawaban.
+                Mode ujian akan ditampilkan dalam halaman penuh tanpa sidebar dashboard siswa.
               </p>
             </div>
 
-            <div className="mt-5 grid gap-4">
-              {tryout.tryoutQuestions.map((item) => (
-                <article
-                  key={item.id}
-                  className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5"
-                >
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    Soal {item.orderNumber}
-                  </span>
-                  <p className="mt-4 text-sm leading-7 text-slate-800">
-                    {item.question.questionText}
-                  </p>
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <article className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Yang Perlu Kamu Siapkan
+                </p>
+                <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+                  <li>Pastikan koneksi dan perangkatmu stabil sebelum mulai mengerjakan.</li>
+                  <li>Kerjakan semua soal sampai selesai karena tryout ini tidak mendukung retake.</li>
+                  <li>Setelah jawaban dikirim, hasil langsung disimpan dan bisa ditinjau kembali.</li>
+                </ul>
+              </article>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <AnswerChoice
-                      label="A"
-                      name={`answer_${item.questionId}`}
-                      text={item.question.optionA}
-                    />
-                    <AnswerChoice
-                      label="B"
-                      name={`answer_${item.questionId}`}
-                      text={item.question.optionB}
-                    />
-                    <AnswerChoice
-                      label="C"
-                      name={`answer_${item.questionId}`}
-                      text={item.question.optionC}
-                    />
-                    <AnswerChoice
-                      label="D"
-                      name={`answer_${item.questionId}`}
-                      text={item.question.optionD}
-                    />
-                  </div>
-                </article>
-              ))}
-            </div>
+              <article className="rounded-[1.6rem] border border-slate-200/80 bg-slate-950 p-5 text-white shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-200">
+                  Mulai Tryout
+                </p>
+                <h3 className="mt-3 text-xl font-semibold tracking-tight">
+                  Siap fokus mengerjakan?
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-slate-300">
+                  Klik tombol di bawah untuk membuka mode ujian penuh dan mulai mengerjakan soal.
+                </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <LoadingSubmitButton
-                idleLabel="Kirim Jawaban Tryout"
-                pendingLabel="Mengirim..."
-                loadingMessage="Mengirim jawaban tryout..."
-                className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              />
-              <Link
-                href="/siswa/tryout"
-                className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Batal
-              </Link>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <StartTryoutButton
+                    href={`/siswa/tryout/${tryout.id}/kerjakan`}
+                    idleLabel="Mulai Tryout"
+                    pendingLabel="Menyiapkan..."
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  />
+                  <Link
+                    href="/siswa/tryout"
+                    className="inline-flex h-11 items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-white transition hover:bg-white/10"
+                  >
+                    Kembali
+                  </Link>
+                </div>
+              </article>
             </div>
           </section>
-        </form>
+        </section>
       )}
     </div>
   );
@@ -365,34 +403,6 @@ function StudentSummaryCard({
       </p>
       <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
     </div>
-  );
-}
-
-function AnswerChoice({
-  label,
-  name,
-  text,
-}: {
-  label: keyof typeof AnswerOption;
-  name: string;
-  text: string;
-}) {
-  return (
-    <label className="flex items-start gap-3 rounded-[1.3rem] border border-slate-200/80 bg-white px-4 py-3 text-sm text-slate-700 transition hover:border-sky-200 hover:bg-sky-50/40">
-      <input
-        name={name}
-        type="radio"
-        value={label}
-        required
-        className="mt-1 h-4 w-4 border-slate-300 text-sky-600"
-      />
-      <span className="min-w-0">
-        <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-          Opsi {label}
-        </span>
-        <span className="mt-1 block leading-6">{text}</span>
-      </span>
-    </label>
   );
 }
 
