@@ -25,6 +25,7 @@ type StudentDashboardShellProps = {
 };
 
 const STORAGE_KEY = "student-sidebar-collapsed";
+const PORTFOLIO_URL = "#";
 
 export function StudentDashboardShell({
   children,
@@ -380,7 +381,24 @@ export function StudentDashboardShell({
             </header>
           </div>
 
-          <main className="min-w-0 overflow-x-clip pb-6 lg:px-6 lg:pt-5">{children}</main>
+          <main className="min-w-0 overflow-x-clip pb-6 lg:px-6 lg:pt-5">
+            {children}
+            <footer className="mt-8 border-t border-slate-200/80 pt-5 text-center text-[13px] text-slate-400">
+              <span>All Right Reserved. Created with </span>
+              <span className="mx-1 inline-flex translate-y-[2px] text-rose-500">
+                <LoveIcon />
+              </span>
+              <span> by </span>
+              <Link
+                href={PORTFOLIO_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-blue-600 transition hover:text-blue-700 hover:underline"
+              >
+                Akbar
+              </Link>
+            </footer>
+          </main>
         </div>
       </div>
     </div>
@@ -616,6 +634,18 @@ function SearchIcon() {
     <svg aria-hidden="true" {...iconProps()}>
       <circle cx="11" cy="11" r="6.5" />
       <path d="m16 16 3.5 3.5" />
+    </svg>
+  );
+}
+
+function LoveIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 fill-current"
+    >
+      <path d="M12 20.4 10.6 19C5.4 14.2 2 11.1 2 7.3 2 4.2 4.4 2 7.4 2c1.8 0 3.6.8 4.6 2.2C13 2.8 14.8 2 16.6 2 19.6 2 22 4.2 22 7.3c0 3.8-3.4 6.9-8.6 11.7L12 20.4Z" />
     </svg>
   );
 }

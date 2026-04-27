@@ -151,14 +151,14 @@ export default async function SiswaTryoutPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href="/siswa"
             className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
           >
             Kembali ke Dashboard
           </Link>
-        </div>
+        </div> */}
       </section>
 
       <section className="grid gap-4 xl:grid-cols-3">
@@ -333,6 +333,18 @@ function TryoutListCard({
       : status === "Perlu Tanggapan"
         ? "bg-orange-100 text-orange-700"
         : "bg-blue-100 text-blue-700";
+  const primaryCta =
+    status === "Perlu Tanggapan"
+      ? {
+          href: "/siswa/tanggapan",
+          label: "Isi Tanggapan",
+        }
+      : status === "Selesai"
+        ? {
+            href: `/siswa/tryout/${tryoutId}`,
+            label: "Lihat Hasil",
+          }
+        : null;
 
   return (
     <article className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-[0_14px_34px_rgba(15,23,42,0.04)]">
@@ -377,18 +389,26 @@ function TryoutListCard({
             </Link>
           </>
         ) : (
-          <Link
-            href={`/siswa/tryout/${tryoutId}`}
-            className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] transition hover:bg-blue-500"
-          >
-            Lihat Detail
-          </Link>
+          <>
+            <Link
+              href={primaryCta?.href ?? `/siswa/tryout/${tryoutId}`}
+              className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] transition hover:bg-blue-500"
+            >
+              {primaryCta?.label ?? "Lihat Detail"}
+            </Link>
+            <Link
+              href={`/siswa/tryout/${tryoutId}`}
+              className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Lihat Detail
+            </Link>
+          </>
         )}
         <span className="text-sm text-slate-500">
           {status === "Perlu Tanggapan"
-            ? "Cek hasil dan lanjutkan pengisian tanggapan."
+            ? "Isi tanggapan dulu agar evaluasi belajarmu lengkap, lalu kamu tetap bisa membuka detail tryout."
             : status === "Selesai"
-              ? "Hasil terbaru sudah tersimpan dan bisa kamu tinjau kembali."
+              ? "Hasil terbaru sudah tersimpan dan siap kamu tinjau kembali."
               : "Tryout ini siap kamu mulai kapan saja."}
         </span>
       </div>

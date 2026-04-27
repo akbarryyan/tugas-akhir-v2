@@ -22,7 +22,7 @@ type BmkgWeatherResponse = {
   };
 };
 
-const DEFAULT_ADM4 = process.env.STUDENT_WEATHER_ADM4 ?? "31.71.03.1001";
+const DEFAULT_ADM4 = process.env.STUDENT_WEATHER_ADM4 ?? "32.12.16.2007";
 const FALLBACK_LOCATION = "Wilayah sekolah";
 
 export async function getStudentDashboardWeather(): Promise<StudentDashboardWeather> {

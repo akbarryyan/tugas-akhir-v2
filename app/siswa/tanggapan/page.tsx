@@ -111,7 +111,7 @@ export default async function SiswaTanggapanPage() {
 
   return (
     <div className="space-y-5">
-      <section className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <section>
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-700">
             Aktivitas Belajar
@@ -124,13 +124,6 @@ export default async function SiswaTanggapanPage() {
             sudah pernah kamu kirim.
           </p>
         </div>
-
-        <Link
-          href="/siswa"
-          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-        >
-          Kembali ke Dashboard
-        </Link>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-3">

@@ -177,12 +177,6 @@ export default async function SiswaProgresPage() {
           >
             Lihat Hasil
           </Link>
-          <Link
-            href="/siswa"
-            className="inline-flex items-center rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] transition hover:bg-blue-500"
-          >
-            Kembali ke Dashboard
-          </Link>
         </div>
       </section>
 

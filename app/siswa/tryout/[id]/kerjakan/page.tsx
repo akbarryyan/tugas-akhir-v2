@@ -1,7 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 import { TryoutStatus } from "@prisma/client";
 
 import { StatusAlert } from "@/app/admin/_components";
+import { ExamHeaderTimer } from "@/app/siswa/tryout/[id]/kerjakan/_exam-header-timer";
 import { TryoutExamClient } from "@/app/siswa/tryout/[id]/kerjakan/_tryout-exam-client";
 import { submitTryoutAnswersAction } from "@/app/siswa/tryout/_actions";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -142,44 +144,60 @@ export default async function SiswaTryoutExamPage({
   }
 
   return (
-    <div className="min-h-screen px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-7xl flex-col rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_28px_72px_rgba(15,23,42,0.08)] sm:min-h-[calc(100vh-3rem)]">
-        <header className="border-b border-slate-200/80 bg-[linear-gradient(135deg,#f8fbff_0%,#eef6ff_48%,#ffffff_100%)] px-5 py-5 sm:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-3">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#edf5ff_0%,#f7fbff_100%)] px-0 py-0">
+      <div className="flex min-h-screen w-full flex-col bg-white shadow-[0_28px_72px_rgba(15,23,42,0.08)]">
+        <header className="border-b border-slate-200/80 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
                 <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-700">
                   {tryout.subject.name}
                 </span>
-                <span className="rounded-full bg-white px-3 py-1 text-slate-500">
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
                   {tryout.tryoutQuestions.length} soal
                 </span>
                 {tryout.durationMinutes ? (
-                  <span className="rounded-full bg-white px-3 py-1 text-slate-500">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
                     {tryout.durationMinutes} menit
                   </span>
                 ) : null}
               </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+              <div className="mt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-700">
                   Mode Ujian CBT
                 </p>
-                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">
                   {tryout.title}
                 </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-                  Kerjakan semua soal dengan fokus. Setelah dikirim, hasil tryout akan langsung
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                  Fokus kerjakan soal satu per satu. Setelah dikirim, hasil tryout langsung
                   tersimpan dan tidak bisa dikerjakan ulang.
                 </p>
               </div>
             </div>
 
-            <Link
-              href={`/siswa/tryout/${tryout.id}`}
-              className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              Keluar dari Mode Ujian
-            </Link>
+            <div className="shrink-0 space-y-3">
+              <div className="rounded-[1.35rem] border border-slate-200/80 bg-slate-50 px-3 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <div className="flex items-center gap-3">
+                  <StudentProfileAvatar
+                    image={session?.user.image ?? null}
+                    name={session?.user.name ?? null}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      Peserta Ujian
+                    </p>
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {session?.user.name ?? "Siswa"}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">
+                      {session?.user.email ?? "Profil siswa aktif"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <ExamHeaderTimer durationMinutes={tryout.durationMinutes} />
+            </div>
           </div>
         </header>
 
@@ -209,6 +227,39 @@ export default async function SiswaTryoutExamPage({
           tryoutId={tryout.id}
         />
       </div>
+    </div>
+  );
+}
+
+function StudentProfileAvatar({
+  image,
+  name,
+}: {
+  image: string | null;
+  name: string | null;
+}) {
+  const initials = (name ?? "Siswa")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
+  if (image) {
+    return (
+      <Image
+        src={image}
+        alt={name ?? "Foto profil siswa"}
+        width={44}
+        height={44}
+        className="h-11 w-11 rounded-full object-cover ring-2 ring-white"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,#38bdf8_0%,#2563eb_100%)] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.28)]">
+      {initials || "S"}
     </div>
   );
 }

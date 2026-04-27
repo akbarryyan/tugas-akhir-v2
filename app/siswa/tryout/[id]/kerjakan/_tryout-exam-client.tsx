@@ -45,15 +45,18 @@ export function TryoutExamClient({
 }: TryoutExamClientProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, AnswerOption>>({});
   const [markedQuestions, setMarkedQuestions] = useState<Record<string, boolean>>({});
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(
     durationMinutes ? durationMinutes * 60 : null,
   );
-  const questionRefs = useRef<Record<number, HTMLElement | null>>({});
   const isTimeWarningShownRef = useRef(false);
   const isTimeUpShownRef = useRef(false);
   const answeredCount = Object.keys(selectedAnswers).length;
   const unansweredCount = Math.max(0, questions.length - answeredCount);
   const markedCount = Object.values(markedQuestions).filter(Boolean).length;
+  const currentQuestion = questions[currentQuestionIndex];
+  const isFirstQuestion = currentQuestionIndex === 0;
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const paletteLabel = durationMinutes ? "Sisa Waktu" : "Mode Waktu";
   const timerToneClass =
     remainingSeconds !== null && remainingSeconds <= EXAM_WARNING_THRESHOLD_SECONDS
@@ -118,11 +121,12 @@ export function TryoutExamClient({
     () =>
       questions.map((item) => ({
         isAnswered: Boolean(selectedAnswers[item.question.id]),
+        isActive: item.orderNumber === currentQuestion.orderNumber,
         isMarked: Boolean(markedQuestions[item.question.id]),
         questionId: item.question.id,
         orderNumber: item.orderNumber,
       })),
-    [markedQuestions, questions, selectedAnswers],
+    [currentQuestion.orderNumber, markedQuestions, questions, selectedAnswers],
   );
 
   const timerLabel =
@@ -138,149 +142,174 @@ export function TryoutExamClient({
       <input type="hidden" name="errorRedirectPath" value={errorRedirectPath} />
       <input type="hidden" name="successRedirectPath" value={successRedirectPath} />
 
-      <div className="grid min-h-0 flex-1 gap-5 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid min-h-0 flex-1 gap-5 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-h-0 space-y-4 overflow-y-auto pr-1">
-          {questions.map((item) => (
-            <article
-              key={item.id}
-              id={`soal-${item.orderNumber}`}
-              ref={(element) => {
-                questionRefs.current[item.orderNumber] = element;
-              }}
-              className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                  Soal {item.orderNumber}
-                </span>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    selectedAnswers[item.question.id]
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  {selectedAnswers[item.question.id] ? "Sudah dijawab" : "Belum dijawab"}
-                </span>
-                {markedQuestions[item.question.id] ? (
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                    Ragu-ragu
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-4 text-sm leading-7 text-slate-800">
-                {item.question.questionText}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.3rem] border border-slate-200/80 bg-slate-50/80 px-4 py-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                Navigasi Soal
               </p>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <AnswerChoice
-                  checked={selectedAnswers[item.question.id] === "A"}
-                  label="A"
-                  name={`answer_${item.question.id}`}
-                  onChange={(value) => {
-                    setSelectedAnswers((currentAnswers) => ({
-                      ...currentAnswers,
-                      [item.question.id]: value,
-                    }));
-                  }}
-                  text={item.question.optionA}
-                />
-                <AnswerChoice
-                  checked={selectedAnswers[item.question.id] === "B"}
-                  label="B"
-                  name={`answer_${item.question.id}`}
-                  onChange={(value) => {
-                    setSelectedAnswers((currentAnswers) => ({
-                      ...currentAnswers,
-                      [item.question.id]: value,
-                    }));
-                  }}
-                  text={item.question.optionB}
-                />
-                <AnswerChoice
-                  checked={selectedAnswers[item.question.id] === "C"}
-                  label="C"
-                  name={`answer_${item.question.id}`}
-                  onChange={(value) => {
-                    setSelectedAnswers((currentAnswers) => ({
-                      ...currentAnswers,
-                      [item.question.id]: value,
-                    }));
-                  }}
-                  text={item.question.optionC}
-                />
-                <AnswerChoice
-                  checked={selectedAnswers[item.question.id] === "D"}
-                  label="D"
-                  name={`answer_${item.question.id}`}
-                  onChange={(value) => {
-                    setSelectedAnswers((currentAnswers) => ({
-                      ...currentAnswers,
-                      [item.question.id]: value,
-                    }));
-                  }}
-                  text={item.question.optionD}
-                />
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMarkedQuestions((currentMarked) => ({
-                      ...currentMarked,
-                      [item.question.id]: !currentMarked[item.question.id],
-                    }));
-                  }}
-                  className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-semibold transition ${
-                    markedQuestions[item.question.id]
-                      ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                      : "border border-slate-200 bg-white text-slate-600 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700"
-                  }`}
-                >
-                  {markedQuestions[item.question.id] ? "Batalkan Tanda" : "Ragu-ragu / Tandai Soal"}
-                </button>
-                <span className="text-sm text-slate-500">
-                  Gunakan tanda ini untuk menandai soal yang ingin kamu cek lagi sebelum submit.
-                </span>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        <aside className="space-y-4">
-          <div className="rounded-[1.7rem] border border-slate-200/80 bg-slate-950 p-5 text-white shadow-[0_22px_54px_rgba(15,23,42,0.14)]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-200">
-                  Ringkasan Ujian
-                </p>
-                <h2 className="mt-3 text-lg font-semibold tracking-tight">
-                  {title}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{subjectName}</p>
-              </div>
-              <span
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${timerToneClass}`}
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                Soal {currentQuestion.orderNumber} dari {questions.length}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isFirstQuestion}
+                onClick={() => {
+                  setCurrentQuestionIndex((current) => Math.max(0, current - 1));
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {paletteLabel}
+                Sebelumnya
+              </button>
+              <button
+                type="button"
+                disabled={isLastQuestion}
+                onClick={() => {
+                  setCurrentQuestionIndex((current) =>
+                    Math.min(questions.length - 1, current + 1),
+                  );
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </div>
+
+          <article
+            id={`soal-${currentQuestion.orderNumber}`}
+            className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 sm:p-6"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                Soal {currentQuestion.orderNumber}
+              </span>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  selectedAnswers[currentQuestion.question.id]
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {selectedAnswers[currentQuestion.question.id] ? "Sudah dijawab" : "Belum dijawab"}
+              </span>
+              {markedQuestions[currentQuestion.question.id] ? (
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                  Ragu-ragu
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-5 text-base leading-8 text-slate-800 sm:text-[1.03rem]">
+              {currentQuestion.question.questionText}
+            </p>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              <AnswerChoice
+                checked={selectedAnswers[currentQuestion.question.id] === "A"}
+                label="A"
+                name={`answer_${currentQuestion.question.id}`}
+                onChange={(value) => {
+                  setSelectedAnswers((currentAnswers) => ({
+                    ...currentAnswers,
+                    [currentQuestion.question.id]: value,
+                  }));
+                }}
+                text={currentQuestion.question.optionA}
+              />
+              <AnswerChoice
+                checked={selectedAnswers[currentQuestion.question.id] === "B"}
+                label="B"
+                name={`answer_${currentQuestion.question.id}`}
+                onChange={(value) => {
+                  setSelectedAnswers((currentAnswers) => ({
+                    ...currentAnswers,
+                    [currentQuestion.question.id]: value,
+                  }));
+                }}
+                text={currentQuestion.question.optionB}
+              />
+              <AnswerChoice
+                checked={selectedAnswers[currentQuestion.question.id] === "C"}
+                label="C"
+                name={`answer_${currentQuestion.question.id}`}
+                onChange={(value) => {
+                  setSelectedAnswers((currentAnswers) => ({
+                    ...currentAnswers,
+                    [currentQuestion.question.id]: value,
+                  }));
+                }}
+                text={currentQuestion.question.optionC}
+              />
+              <AnswerChoice
+                checked={selectedAnswers[currentQuestion.question.id] === "D"}
+                label="D"
+                name={`answer_${currentQuestion.question.id}`}
+                onChange={(value) => {
+                  setSelectedAnswers((currentAnswers) => ({
+                    ...currentAnswers,
+                    [currentQuestion.question.id]: value,
+                  }));
+                }}
+                text={currentQuestion.question.optionD}
+              />
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setMarkedQuestions((currentMarked) => ({
+                    ...currentMarked,
+                    [currentQuestion.question.id]: !currentMarked[currentQuestion.question.id],
+                  }));
+                }}
+                className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-semibold transition ${
+                  markedQuestions[currentQuestion.question.id]
+                    ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                    : "border border-slate-200 bg-white text-slate-600 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                }`}
+              >
+                {markedQuestions[currentQuestion.question.id]
+                  ? "Batalkan Tanda"
+                  : "Ragu-ragu / Tandai Soal"}
+              </button>
+              <span className="text-sm text-slate-500">
+                Gunakan tanda ini untuk menandai soal yang ingin kamu cek lagi sebelum submit.
               </span>
             </div>
 
-            <div className="mt-5 grid gap-3">
-              <ExamMetaItem label="Sisa waktu" value={timerLabel} />
-              <ExamMetaItem label="Sudah dijawab" value={`${answeredCount}`} />
-              <ExamMetaItem label="Belum dijawab" value={`${unansweredCount}`} />
-              <ExamMetaItem label="Ditandai" value={`${markedCount}`} />
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 pt-5">
+              <button
+                type="button"
+                disabled={isFirstQuestion}
+                onClick={() => {
+                  setCurrentQuestionIndex((current) => Math.max(0, current - 1));
+                }}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Soal Sebelumnya
+              </button>
+              <button
+                type="button"
+                disabled={isLastQuestion}
+                onClick={() => {
+                  setCurrentQuestionIndex((current) =>
+                    Math.min(questions.length - 1, current + 1),
+                  );
+                }}
+                className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Soal Berikutnya
+              </button>
             </div>
+          </article>
+        </section>
 
-            <p className="mt-4 text-sm leading-7 text-slate-300">
-              Pastikan semua soal terjawab sebelum kamu mengirim tryout ini. Setelah dikirim,
-              hasil langsung tersimpan dan tidak bisa diulang.
-            </p>
-          </div>
-
-          <div className="rounded-[1.6rem] border border-slate-200/80 bg-white p-5">
+        <aside className="space-y-4">
+          <div className="rounded-[1.6rem] border border-slate-200/80 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -308,23 +337,53 @@ export function TryoutExamClient({
                   key={item.orderNumber}
                   type="button"
                   onClick={() => {
-                    questionRefs.current[item.orderNumber]?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
+                    setCurrentQuestionIndex(item.orderNumber - 1);
                   }}
                   className={`inline-flex h-11 items-center justify-center rounded-2xl border text-sm font-semibold transition ${
-                    item.isMarked
-                      ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                      : item.isAnswered
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                    item.isActive
+                      ? "border-sky-300 bg-sky-50 text-sky-700 shadow-[0_10px_20px_rgba(14,165,233,0.08)]"
+                      : item.isMarked
+                        ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                        : item.isAnswered
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
                   }`}
                 >
                   {item.orderNumber}
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Ringkasan Ujian
+                </p>
+                <h2 className="mt-2 text-base font-semibold tracking-tight text-slate-900">
+                  {title}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500">{subjectName}</p>
+              </div>
+              <span
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${timerToneClass}`}
+              >
+                {paletteLabel}
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <ExamMetaItem label="Sisa waktu" value={timerLabel} />
+              <ExamMetaItem label="Sudah dijawab" value={`${answeredCount}`} />
+              <ExamMetaItem label="Belum dijawab" value={`${unansweredCount}`} />
+              <ExamMetaItem label="Ditandai" value={`${markedCount}`} />
+            </div>
+
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              Pastikan semua soal terjawab sebelum kamu mengirim tryout ini. Setelah dikirim,
+              hasil langsung tersimpan dan tidak bisa diulang.
+            </p>
           </div>
 
           <div className="rounded-[1.6rem] border border-slate-200/80 bg-white p-5">
@@ -390,11 +449,11 @@ function ExamMetaItem({
   value: string;
 }) {
   return (
-    <div className="rounded-[1.2rem] border border-white/10 bg-white/5 px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300">
+    <div className="rounded-[1.2rem] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
         {label}
       </p>
-      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+      <p className="mt-2 text-sm font-semibold text-slate-900">{value}</p>
     </div>
   );
 }
