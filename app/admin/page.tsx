@@ -97,238 +97,243 @@ export default async function AdminPage() {
   ];
 
   return (
-    <div className="space-y-6 lg:space-y-7">
-      <section className="grid gap-5 xl:grid-cols-[0.92fr_1.48fr]">
-        <div className="rounded-[2rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.95)_0%,rgba(248,250,252,0.92)_100%)] p-6 shadow-[0_26px_60px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-slate-400">Total Akun Terkelola</p>
-              <p className="mt-3 text-[2.35rem] font-semibold tracking-tight text-slate-950">
-                {totalManagedUsers}
-              </p>
-            </div>
-            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
-              Admin Overview
-            </span>
-          </div>
-
-          <p className="mt-4 max-w-md text-sm leading-7 text-slate-600">
-            Pantau pengguna aktif, kelola data utama sekolah, dan arahkan administrasi operasional dari satu dashboard yang lebih terstruktur.
+    <div className="space-y-5">
+      <section className="grid gap-5 xl:grid-cols-[0.78fr_1.42fr]">
+        <div className="overflow-hidden rounded-[1.85rem] border border-slate-200/80 bg-[linear-gradient(135deg,#5f72ff_0%,#6ca5ff_48%,#7ed4c8_100%)] p-6 text-white shadow-[0_22px_54px_rgba(99,102,241,0.18)]">
+          <p className="text-sm font-medium text-white/75">Akun Terkelola</p>
+          <p className="mt-3 text-[2.4rem] font-semibold tracking-tight">{totalManagedUsers}</p>
+          <p className="mt-3 max-w-sm text-sm leading-7 text-white/80">
+            Kelola pengguna aktif, data akademik, dan tryout dari satu panel administrasi yang lebih cepat dipindai.
           </p>
-
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/admin/guru"
-              className="inline-flex items-center rounded-2xl bg-[linear-gradient(135deg,#5f72ff_0%,#7184ff_100%)] px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(95,114,255,0.28)] transition hover:translate-y-[-1px]"
+              className="inline-flex items-center rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-[0_10px_22px_rgba(255,255,255,0.22)] transition hover:translate-y-[-1px]"
             >
-              Kelola Guru
+              Lihat Pengguna
             </Link>
             <Link
-              href="/admin/siswa"
-              className="inline-flex items-center rounded-2xl bg-[linear-gradient(135deg,#64748b_0%,#475569_100%)] px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(71,85,105,0.2)] transition hover:translate-y-[-1px]"
+              href="/admin/tryout"
+              className="inline-flex items-center rounded-full border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              Kelola Siswa
+              Pantau Tryout
             </Link>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <MiniOverviewCard
-              label="Akun Guru"
-              value={teacherCount}
-              helper="Pengajar aktif yang mengelola soal dan tryout."
-            />
-            <MiniOverviewCard
-              label="Akun Siswa"
-              value={studentCount}
-              helper="Siswa aktif yang dapat mengikuti tryout."
-            />
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_26px_60px_rgba(15,23,42,0.08)]">
-          <div className="grid border-b border-slate-200/80 lg:grid-cols-2">
-            <InsightTile
-              accent="indigo"
-              label="Tryout Dipublikasikan"
-              value={publishedTryoutCount}
-              detail={`${draftTryoutCount} paket masih berada pada status draft.`}
-            />
-            <InsightTile
-              accent="sky"
-              label="Mata Pelajaran Aktif"
-              value={subjectCount}
-              detail={`${assignedSubjectCount} mapel sudah memiliki guru pengampu.`}
-            />
+        <div className="rounded-[1.85rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Statistik</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                Diperbarui untuk ringkasan admin
+              </p>
+            </div>
+            <span className="text-xs text-slate-400">Snapshot langsung</span>
           </div>
 
-          <div className="grid lg:grid-cols-2">
-            <div className="border-b border-slate-200/80 p-6 lg:border-b-0 lg:border-r">
-              <p className="text-sm font-medium text-slate-400">Cakupan Pengampu</p>
-              <p className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">
-                {coveragePercent}%
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Proporsi mata pelajaran yang sudah terhubung dengan guru pengampu.
-              </p>
-
-              <div className="mt-5 h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-2 rounded-full bg-[linear-gradient(90deg,#5f72ff_0%,#7c90ff_100%)]"
-                  style={{ width: `${coveragePercent}%` }}
-                />
-              </div>
-
-              <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
-                <span>{assignedSubjectCount} sudah terhubung</span>
-                <span>{remainingSubjects} belum terhubung</span>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <p className="text-sm font-medium text-slate-400">Distribusi Ringkas</p>
-              <div className="mt-5 space-y-4">
-                <AnalyticsRow
-                  color="bg-pink-300"
-                  label="Guru"
-                  value={teacherCount}
-                  width={totalManagedUsers === 0 ? 0 : Math.max(12, Math.round((teacherCount / totalManagedUsers) * 100))}
-                />
-                <AnalyticsRow
-                  color="bg-violet-300"
-                  label="Siswa"
-                  value={studentCount}
-                  width={totalManagedUsers === 0 ? 0 : Math.max(12, Math.round((studentCount / totalManagedUsers) * 100))}
-                />
-                <AnalyticsRow
-                  color="bg-sky-300"
-                  label="Tryout Aktif"
-                  value={publishedTryoutCount}
-                  width={tryoutCount === 0 ? 0 : Math.max(12, Math.round((publishedTryoutCount / tryoutCount) * 100))}
-                />
-              </div>
-            </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricStatCard
+              accent="indigo"
+              label="Guru"
+              helper="Pengajar aktif"
+              value={teacherCount}
+            />
+            <MetricStatCard
+              accent="emerald"
+              label="Siswa"
+              helper="Akses belajar"
+              value={studentCount}
+            />
+            <MetricStatCard
+              accent="amber"
+              label="Tryout"
+              helper="Paket tersedia"
+              value={tryoutCount}
+            />
+            <MetricStatCard
+              accent="sky"
+              label="Mapel"
+              helper="Subjek aktif"
+              value={subjectCount}
+            />
           </div>
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.35fr_0.9fr]">
-        <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_24px_56px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col gap-3 border-b border-slate-200/80 px-6 py-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-500">
-                Ringkasan Data
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                Data Utama Administrasi
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                Tinjau setiap area pengelolaan utama dan buka halaman terkait untuk melanjutkan pekerjaan administrasi.
-              </p>
+      <section className="grid gap-5 xl:grid-cols-[1.35fr_0.95fr]">
+        <div className="grid gap-5">
+          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[1.85rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Laporan Cakupan</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                    Guru pengampu dan kesiapan mapel
+                  </p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                  {coveragePercent}%
+                </span>
+              </div>
+
+              <div className="mt-6 grid h-[220px] grid-cols-6 items-end gap-3">
+                {[
+                  Math.max(18, coveragePercent - 24),
+                  Math.max(22, coveragePercent - 8),
+                  Math.max(16, coveragePercent - 30),
+                  Math.max(26, coveragePercent),
+                  Math.max(18, coveragePercent - 16),
+                  Math.max(20, coveragePercent - 6),
+                ].map((value, index) => (
+                  <div key={index} className="flex flex-col items-center gap-3">
+                    <div className="flex h-[180px] items-end">
+                      <div
+                        className={`w-8 rounded-full ${
+                          index % 2 === 0 ? "bg-indigo-500/85" : "bg-emerald-400/85"
+                        }`}
+                        style={{ height: `${Math.min(100, value)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-slate-400">
+                      {["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"][index]}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <Link
-              href="/admin/tryout"
-              className="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
-            >
-              Lihat Monitoring Tryout
-            </Link>
+
+            <div className="grid gap-5">
+              <div className="rounded-[1.85rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
+                <p className="text-sm font-semibold text-slate-900">Status Tryout</p>
+                <p className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">
+                  {publishedTryoutCount}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Paket yang sudah dipublikasikan untuk siswa.
+                </p>
+                <div className="mt-5 h-2 rounded-full bg-slate-100">
+                  <div
+                    className="h-2 rounded-full bg-[linear-gradient(90deg,#6366f1_0%,#60a5fa_100%)]"
+                    style={{
+                      width: `${tryoutCount === 0 ? 0 : Math.max(12, Math.round((publishedTryoutCount / tryoutCount) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-slate-400">{draftTryoutCount} draft menunggu review</p>
+              </div>
+
+              <div className="rounded-[1.85rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
+                <p className="text-sm font-semibold text-slate-900">Relasi Pengampu</p>
+                <p className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">
+                  {assignmentCount}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Relasi pengampu yang sudah aktif di sistem.
+                </p>
+                <div className="mt-5 grid grid-cols-5 items-end gap-2">
+                  {[58, 84, 46, 78, 92].map((bar, index) => (
+                    <div key={index} className="h-24 rounded-full bg-slate-100 p-1">
+                      <div
+                        className="w-full rounded-full bg-emerald-400"
+                        style={{ height: `${bar}%`, marginTop: `${100 - bar}%` }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="hidden lg:block">
-            <div className="grid grid-cols-[1.1fr_2fr_0.7fr_auto] gap-4 bg-slate-50/85 px-6 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-              <span>Modul</span>
-              <span>Deskripsi</span>
-              <span>Total</span>
-              <span className="text-right">Aksi</span>
+          <div className="overflow-hidden rounded-[1.85rem] border border-slate-200/80 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
+            <div className="flex flex-col gap-3 border-b border-slate-200/80 px-6 py-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Laporan Modul</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                  Modul administrasi utama
+                </p>
+              </div>
+              <Link
+                href="/admin/tryout"
+                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              >
+                Lihat Monitoring
+              </Link>
             </div>
-            <div className="divide-y divide-slate-200/80">
+
+            <div className="hidden lg:block">
+              <div className="grid grid-cols-[1.1fr_2fr_0.7fr_auto] gap-4 bg-slate-50/85 px-6 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <span>Modul</span>
+                <span>Deskripsi</span>
+                <span>Total</span>
+                <span className="text-right">Aksi</span>
+              </div>
+              <div className="divide-y divide-slate-200/80">
+                {summaryRows.map((row) => (
+                  <div
+                    key={row.href}
+                    className="grid grid-cols-[1.1fr_2fr_0.7fr_auto] items-center gap-4 px-6 py-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-950">{row.label}</p>
+                    </div>
+                    <p className="text-sm leading-6 text-slate-600">{row.note}</p>
+                    <p className="text-sm font-semibold text-slate-950">
+                      {row.total} {row.unit}
+                    </p>
+                    <div className="text-right">
+                      <Link
+                        href={row.href}
+                        className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+                      >
+                        Buka
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4 px-5 py-5 lg:hidden">
               {summaryRows.map((row) => (
                 <div
                   key={row.href}
-                  className="grid grid-cols-[1.1fr_2fr_0.7fr_auto] items-center gap-4 px-6 py-4"
+                  className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/70 p-5"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-950">{row.label}</p>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <h3 className="text-base font-semibold text-slate-950">{row.label}</h3>
+                      <p className="text-sm leading-6 text-slate-600">{row.note}</p>
+                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+                      {row.total} {row.unit}
+                    </span>
                   </div>
-                  <p className="text-sm leading-6 text-slate-600">{row.note}</p>
-                  <p className="text-sm font-semibold text-slate-950">
-                    {row.total} {row.unit}
-                  </p>
-                  <div className="text-right">
+                  <div className="mt-4">
                     <Link
                       href={row.href}
                       className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
                     >
-                      Buka
+                      Buka Modul
                     </Link>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          <div className="grid gap-4 px-5 py-5 lg:hidden">
-            {summaryRows.map((row) => (
-              <div
-                key={row.href}
-                className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/70 p-5"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <h3 className="text-base font-semibold text-slate-950">{row.label}</h3>
-                    <p className="text-sm leading-6 text-slate-600">{row.note}</p>
-                  </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
-                    {row.total} {row.unit}
-                  </span>
-                </div>
-                <div className="mt-4">
-                  <Link
-                    href={row.href}
-                    className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
-                  >
-                    Buka Modul
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="grid gap-5">
-          <div className="rounded-[2rem] border border-white/80 bg-white p-6 shadow-[0_24px_56px_rgba(15,23,42,0.08)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-500">
-              Sorotan Operasional
-            </p>
+          <div className="rounded-[1.85rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
+            <p className="text-sm font-semibold text-slate-900">Pengingat</p>
             <div className="mt-5 grid gap-4">
-              {spotlightItems.map((item) => (
-                <div
-                  key={item.label}
-                  className={`rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${item.tone} p-4`}
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
-                    {item.value}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{item.meta}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-white/80 bg-white p-6 shadow-[0_24px_56px_rgba(15,23,42,0.08)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-500">
-              Fokus Administrasi
-            </p>
-            <div className="mt-5 space-y-4">
               <FocusItem
                 title="Validasi data guru dan siswa"
-                description="Pastikan akun yang aktif benar-benar sesuai dengan kebutuhan operasional sekolah."
+                description="Pastikan akun aktif benar-benar sesuai kebutuhan operasional sekolah."
               />
               <FocusItem
                 title="Lengkapi pengampu mapel"
-                description="Mata pelajaran tanpa pengampu akan menghambat alur bank soal dan tryout."
+                description="Mapel tanpa pengampu akan menghambat alur bank soal dan tryout."
               />
               <FocusItem
                 title="Pantau tryout aktif"
@@ -336,62 +341,96 @@ export default async function AdminPage() {
               />
             </div>
           </div>
+
+          <div className="rounded-[1.85rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
+            <p className="text-sm font-semibold text-slate-900">Ikhtisar Target</p>
+            <div className="mt-6 flex items-center justify-center">
+              <div className="relative flex h-40 w-40 items-center justify-center rounded-full border-[10px] border-slate-100">
+                <div
+                  className="absolute inset-0 rounded-full border-[10px] border-transparent border-t-indigo-500 border-r-indigo-400"
+                  style={{ transform: `rotate(${Math.max(18, coveragePercent * 3.2)}deg)` }}
+                />
+                <div className="text-center">
+                  <p className="text-3xl font-semibold tracking-tight text-slate-950">
+                    {coveragePercent}%
+                  </p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                    Pengampu aktif
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-3 text-center">
+              <div className="rounded-[1.3rem] bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Selesai</p>
+                <p className="mt-2 text-lg font-semibold text-slate-950">{assignedSubjectCount}</p>
+              </div>
+              <div className="rounded-[1.3rem] bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Sisa</p>
+                <p className="mt-2 text-lg font-semibold text-slate-950">{remainingSubjects}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[1.85rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
+            <p className="text-sm font-semibold text-slate-900">Statistik Ringkas</p>
+            <div className="mt-5 space-y-4">
+              {spotlightItems.map((item) => (
+                <AnalyticsRow
+                  key={item.label}
+                  color={item.label === "Pengguna Terkelola" ? "bg-indigo-400" : item.label === "Cakupan Pengampu" ? "bg-emerald-400" : "bg-amber-400"}
+                  label={item.label}
+                  value={Number.parseInt(item.value, 10) || 0}
+                  width={
+                    item.label === "Pengguna Terkelola"
+                      ? 68
+                      : item.label === "Cakupan Pengampu"
+                        ? Math.max(18, coveragePercent)
+                        : tryoutCount === 0
+                          ? 12
+                          : Math.max(12, Math.round((publishedTryoutCount / tryoutCount) * 100))
+                  }
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     </div>
   );
 }
 
-function MiniOverviewCard({
+function MetricStatCard({
+  accent,
   helper,
   label,
   value,
 }: {
+  accent: "amber" | "emerald" | "indigo" | "sky";
   helper: string;
   label: string;
   value: number;
 }) {
-  return (
-    <div className="rounded-[1.5rem] border border-slate-200/80 bg-white/90 p-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-500">{helper}</p>
-    </div>
-  );
-}
-
-function InsightTile({
-  accent,
-  detail,
-  label,
-  value,
-}: {
-  accent: "indigo" | "sky";
-  detail: string;
-  label: string;
-  value: number;
-}) {
-  const iconTone =
-    accent === "indigo"
-      ? "bg-indigo-100 text-indigo-700"
-      : "bg-sky-100 text-sky-700";
+  const accentClass =
+    accent === "amber"
+      ? "bg-amber-100 text-amber-700"
+      : accent === "emerald"
+        ? "bg-emerald-100 text-emerald-700"
+        : accent === "sky"
+          ? "bg-sky-100 text-sky-700"
+          : "bg-indigo-100 text-indigo-700";
 
   return (
-    <div className="p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-slate-400">{label}</p>
-          <p className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">
-            {value}
-          </p>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">{detail}</p>
-        </div>
-        <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${iconTone}`}>
+    <div className="rounded-[1.45rem] border border-slate-200/80 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${accentClass}`}>
           <InsightIcon />
         </span>
+        <span className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Stat</span>
       </div>
+      <p className="mt-4 text-[1.65rem] font-semibold tracking-tight text-slate-950">{value}</p>
+      <p className="mt-1 text-sm font-medium text-slate-600">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-400">{helper}</p>
     </div>
   );
 }

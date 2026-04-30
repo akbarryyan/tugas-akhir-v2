@@ -44,6 +44,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
   const router = useRouter();
   const { toastPromise } = useToast();
   const [mode, setMode] = useState<LoginMode>("staff");
+  const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -164,6 +165,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
             type="button"
             onClick={() => {
               setMode("staff");
+              setShowPassword(false);
             }}
             className={`rounded-full px-4 py-2 text-sm font-medium transition ${
               mode === "staff"
@@ -177,6 +179,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
             type="button"
             onClick={() => {
               setMode("student");
+              setShowPassword(false);
             }}
             className={`rounded-full px-4 py-2 text-sm font-medium transition ${
               mode === "student"
@@ -232,14 +235,27 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
 
             <label className="grid gap-2 text-sm font-medium text-slate-700">
               Password
-              <input
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="Masukkan password Anda"
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500"
-                required
-              />
+              <div className="relative">
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Masukkan password Anda"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-4 pr-12 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500"
+                  required
+                />
+                <button
+                  type="button"
+                  aria-label={
+                    showPassword ? "Sembunyikan password" : "Tampilkan password"
+                  }
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((current) => !current)}
+                  className="absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
               <span className="text-xs font-normal leading-5 text-slate-500">
                 Periksa kembali penulisan huruf besar dan kecil pada password.
               </span>
@@ -303,6 +319,72 @@ function SpinnerIcon() {
         className="stroke-white"
         strokeLinecap="round"
         strokeWidth="2.5"
+      />
+    </svg>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+    >
+      <path
+        d="M3.5 12s3.2-6 8.5-6 8.5 6 8.5 6-3.2 6-8.5 6-8.5-6-8.5-6Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M12 14.8a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+    >
+      <path
+        d="m4.5 4.5 15 15"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M9.6 6.5A8.7 8.7 0 0 1 12 6c5.3 0 8.5 6 8.5 6a14.3 14.3 0 0 1-2.4 3.1"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M14.1 14.5A2.8 2.8 0 0 1 9.5 9.9"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M6.8 8.1C4.7 9.7 3.5 12 3.5 12s3.2 6 8.5 6c1.2 0 2.3-.3 3.3-.8"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
       />
     </svg>
   );

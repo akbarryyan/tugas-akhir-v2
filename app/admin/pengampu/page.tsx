@@ -177,7 +177,7 @@ export default async function PengampuAdminPage({
                 idleLabel="Simpan Penugasan"
                 pendingLabel="Menyimpan..."
                 loadingMessage="Menyimpan penugasan guru pengampu..."
-                className="h-11 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <ConfirmResetFormButton
                 confirmMessage="Pilihan guru dan mata pelajaran yang belum disimpan akan dikosongkan."

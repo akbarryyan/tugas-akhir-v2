@@ -109,14 +109,14 @@ type TableIconButtonProps = {
 
 export function PageIntro({ description, eyebrow, title }: PageIntroProps) {
   return (
-    <div className="rounded-[1.8rem] border border-white/80 bg-white/80 px-6 py-6 shadow-[0_18px_54px_rgba(15,23,42,0.06)] backdrop-blur">
-      <p className="text-sm font-semibold uppercase tracking-[0.22em] text-indigo-600">
+    <div className="rounded-[1.05rem] border border-slate-200/80 bg-white px-6 py-5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-600">
         {eyebrow}
       </p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+      <h1 className="mt-2 text-[1.75rem] font-semibold tracking-tight text-slate-950">
         {title}
       </h1>
-      <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+      <p className="mt-2.5 max-w-3xl text-sm leading-6 text-slate-600">
         {description}
       </p>
     </div>
@@ -148,15 +148,15 @@ export function SectionCard({
   title,
 }: SectionCardProps) {
   return (
-    <section className="rounded-[1.8rem] border border-white/80 bg-white/88 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.07)] backdrop-blur">
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <section className="rounded-[1.05rem] border border-slate-200/80 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+          <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
           {description ? (
             <p className="text-sm leading-6 text-slate-600">{description}</p>
           ) : null}
         </div>
-        <div className="mt-1 h-10 w-10 rounded-2xl bg-[linear-gradient(135deg,#e0e7ff_0%,#f8fafc_100%)]" />
+        <div className="mt-1 h-9 w-9 rounded-[0.85rem] bg-[linear-gradient(135deg,#e0e7ff_0%,#f8fafc_100%)]" />
       </div>
       {children}
     </section>
@@ -172,11 +172,11 @@ export function AdminLinkCard({
   return (
     <Link
       href={href}
-      className="group rounded-[1.65rem] border border-white/80 bg-white/88 p-6 shadow-[0_18px_54px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-[0_22px_62px_rgba(79,70,229,0.14)]"
+      className="group rounded-[1rem] border border-slate-200/80 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-[0_14px_30px_rgba(79,70,229,0.10)]"
     >
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#e0e7ff_0%,#eef2ff_55%,#ffffff_100%)] text-indigo-700 shadow-inner shadow-white/80">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[0.9rem] bg-[linear-gradient(135deg,#e0e7ff_0%,#eef2ff_55%,#ffffff_100%)] text-indigo-700 shadow-inner shadow-white/80">
             <ArrowTileIcon />
           </div>
           {metric ? (
@@ -186,7 +186,7 @@ export function AdminLinkCard({
           ) : null}
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+          <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
           <p className="text-sm leading-6 text-slate-600">{description}</p>
         </div>
         <span className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 transition group-hover:gap-3">
@@ -226,17 +226,17 @@ export function AdminStatCard({
             };
 
   return (
-    <div className={`rounded-[1.7rem] border border-white/80 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${accentClasses.ring} p-5 shadow-[0_18px_54px_rgba(15,23,42,0.06)]`}>
+    <div className={`rounded-[1rem] border border-slate-200/80 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${accentClasses.ring} p-5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]`}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             {label}
           </p>
-          <p className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">
+          <p className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">
             {value}
           </p>
         </div>
-        <span className={`rounded-2xl px-3 py-2 text-xs font-semibold ${accentClasses.badge}`}>
+        <span className={`rounded-[0.85rem] px-3 py-2 text-xs font-semibold ${accentClasses.badge}`}>
           Aktif
         </span>
       </div>
@@ -257,7 +257,7 @@ export function SearchToolbar({
   );
 
   return (
-    <form className="flex flex-col gap-3 rounded-[1.6rem] border border-white/80 bg-white/82 p-4 shadow-[0_14px_42px_rgba(15,23,42,0.05)] md:flex-row md:items-center">
+    <form className="flex flex-col gap-3 rounded-[1rem] border border-slate-200/80 bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)] md:flex-row md:items-center">
       {preservedParams.map(([key, value]) => (
         <input key={key} type="hidden" name={key} value={value} />
       ))}
@@ -267,7 +267,7 @@ export function SearchToolbar({
         name="q"
         defaultValue={query ?? ""}
         placeholder={placeholder}
-        className="h-11 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 outline-none transition focus:border-indigo-500"
+        className="h-11 min-w-0 flex-1 rounded-[0.9rem] border border-slate-200 bg-white px-4 outline-none transition focus:border-indigo-500"
       />
       <div className="flex flex-wrap gap-3 sm:flex-nowrap">
         <button
@@ -329,7 +329,7 @@ export function DesktopTable({
   minWidthClassName,
 }: DesktopTableProps) {
   return (
-    <div className="overflow-hidden rounded-[1.65rem] border border-slate-200/80 bg-white/92 shadow-[0_14px_42px_rgba(15,23,42,0.05)]">
+    <div className="overflow-hidden rounded-[1rem] border border-slate-200/80 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
       <div className="no-scrollbar max-h-[720px] overflow-auto overscroll-contain">
         <div className={minWidthClassName}>{children}</div>
       </div>
@@ -393,7 +393,7 @@ export function DesktopTableActionCell({
 
 export function AdminEmptyState({ message }: AdminEmptyStateProps) {
   return (
-    <p className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-sm text-slate-500">
+    <p className="rounded-[0.95rem] border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-sm text-slate-500">
       {message}
     </p>
   );
@@ -401,7 +401,7 @@ export function AdminEmptyState({ message }: AdminEmptyStateProps) {
 
 export function MobileDataCard({ children }: MobileDataCardProps) {
   return (
-    <div className="rounded-[1.65rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5 shadow-[0_14px_42px_rgba(15,23,42,0.05)]">
+    <div className="rounded-[1rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
       {children}
     </div>
   );

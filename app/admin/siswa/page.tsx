@@ -1,6 +1,7 @@
 import {
   createStudentAction,
   deleteStudentAction,
+  importStudentsFromExcelAction,
   updateStudentAction,
 } from "@/app/admin/_actions";
 import { LiveFilters } from "@/app/admin/_live-filters";
@@ -145,9 +146,53 @@ export default async function SiswaAdminPage({ searchParams }: SiswaPageProps) {
                 idleLabel="Simpan Data Siswa"
                 pendingLabel="Menyimpan..."
                 loadingMessage="Menyimpan data siswa..."
-                className="h-11 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <ConfirmResetFormButton />
+            </div>
+          </form>
+        </SectionCard>
+
+        <SectionCard
+          title="Import Excel Siswa"
+          description="Unggah file Excel untuk menambahkan banyak data siswa sekaligus melalui sheet pertama."
+        >
+          <form action={importStudentsFromExcelAction} className="grid gap-4">
+            <div className="rounded-[1rem] border border-emerald-100 bg-emerald-50/60 p-4 text-sm leading-6 text-slate-600">
+              <p className="font-semibold text-emerald-700">
+                Format kolom yang didukung
+              </p>
+              <p className="mt-1">
+                Header wajib: <span className="font-semibold">nama</span>,{" "}
+                <span className="font-semibold">nisn</span>, dan{" "}
+                <span className="font-semibold">kelas</span>. Alternatif header
+                seperti <span className="font-semibold">nama_siswa</span> juga
+                bisa digunakan.
+              </p>
+            </div>
+
+            <label className="grid gap-2 text-sm font-medium text-slate-700">
+              File Excel
+              <input
+                name="file"
+                type="file"
+                accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 file:mr-4 file:rounded-full file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-500"
+                required
+              />
+              <span className="text-xs font-normal leading-5 text-slate-500">
+                Maksimal 500 baris dan ukuran file 2 MB. Sistem akan menolak
+                NISN yang sudah terdaftar.
+              </span>
+            </label>
+
+            <div className="mt-2 flex flex-wrap gap-3">
+              <LoadingSubmitButton
+                idleLabel="Import Data Siswa"
+                pendingLabel="Mengimpor..."
+                loadingMessage="Mengimpor data siswa dari Excel..."
+                className="h-11 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+              />
             </div>
           </form>
         </SectionCard>
