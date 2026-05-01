@@ -13,8 +13,10 @@ import { usePathname } from "next/navigation";
 import { AuthMethod } from "@prisma/client";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import type { AdminActivityItem } from "@/lib/admin/activity";
 
 type AdminDashboardShellProps = {
+  activities?: AdminActivityItem[];
   children: ReactNode;
   description: string;
   user: {
@@ -42,11 +44,13 @@ const pageTitleByPath: Record<string, string> = {
   "/admin/siswa": "Kelola Data Siswa",
   "/admin/tryout": "Monitoring Tryout",
   "/admin/profile": "Profil Admin",
+  "/admin/aktivitas": "Riwayat Aktivitas",
 };
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
 
 export function AdminDashboardShell({
+  activities = [],
   children,
   user,
 }: AdminDashboardShellProps) {
@@ -61,7 +65,9 @@ export function AdminDashboardShell({
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const currentTitle = pageTitleByPath[pathname] ?? "Panel Administrasi";
   const isDashboardHome = pathname === "/admin";
@@ -116,11 +122,18 @@ export function AdminDashboardShell({
   }, []);
 
   useEffect(() => {
-    if (!isUserMenuOpen) {
+    if (!isNotificationOpen && !isUserMenuOpen) {
       return;
     }
 
     const handlePointerDown = (event: MouseEvent) => {
+      if (
+        isNotificationOpen &&
+        !notificationRef.current?.contains(event.target as Node)
+      ) {
+        setIsNotificationOpen(false);
+      }
+
       if (!userMenuRef.current?.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
       }
@@ -128,6 +141,7 @@ export function AdminDashboardShell({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        setIsNotificationOpen(false);
         setIsUserMenuOpen(false);
       }
     };
@@ -139,7 +153,7 @@ export function AdminDashboardShell({
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isUserMenuOpen]);
+  }, [isNotificationOpen, isUserMenuOpen]);
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-900">
@@ -309,30 +323,76 @@ export function AdminDashboardShell({
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <button
-                    type="button"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-indigo-400 transition hover:border-slate-300 hover:text-indigo-600"
-                  >
-                    <MoonIcon />
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-rose-300 transition hover:border-slate-300 hover:text-rose-500"
-                  >
-                    <GiftIcon />
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-indigo-300 transition hover:border-slate-300 hover:text-indigo-500"
-                  >
-                    <BellIcon />
-                  </button>
+                  <div ref={notificationRef} className="relative">
+                    <button
+                      type="button"
+                      aria-expanded={isNotificationOpen}
+                      aria-haspopup="dialog"
+                      onClick={() => {
+                        setIsNotificationOpen((current) => !current);
+                        setIsUserMenuOpen(false);
+                      }}
+                      className={`relative inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white transition ${
+                        isNotificationOpen
+                          ? "border-indigo-200 bg-indigo-50 text-indigo-600"
+                          : "border-slate-200 text-indigo-400 hover:border-slate-300 hover:text-indigo-600"
+                      }`}
+                    >
+                      <BellIcon />
+                      <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-rose-500" />
+                    </button>
+
+                    <div
+                      role="dialog"
+                      aria-label="Notifikasi admin"
+                      className={`absolute right-0 top-[calc(100%+0.7rem)] z-50 w-[min(20rem,calc(100vw-2rem))] origin-top-right rounded-[1.05rem] border border-slate-200 bg-white p-2 shadow-[0_22px_50px_rgba(15,23,42,0.14)] transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                        isNotificationOpen
+                          ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+                          : "pointer-events-none -translate-y-1 scale-95 opacity-0"
+                      }`}
+                    >
+                      <div className="rounded-[0.9rem] bg-slate-50 px-3 py-3">
+                        <p className="text-sm font-semibold text-slate-900">
+                          Notifikasi
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          Ringkasan aktivitas admin dan pembaruan sistem.
+                        </p>
+                      </div>
+
+                      <div className="mt-2 grid gap-1">
+                        {activities.length > 0 ? (
+                          activities.slice(0, 4).map((activity) => (
+                            <NotificationItem
+                              key={activity.id}
+                              title={activity.message}
+                              description={`${formatActivityEntity(activity.entityType)} oleh ${activity.actorName} • ${formatRelativeActivityTime(activity.createdAt)}`}
+                            />
+                          ))
+                        ) : (
+                          <div className="rounded-[0.85rem] px-3 py-3 text-sm leading-6 text-slate-500">
+                            Belum ada aktivitas admin terbaru.
+                          </div>
+                        )}
+                        <Link
+                          href="/admin/aktivitas"
+                          onClick={() => setIsNotificationOpen(false)}
+                          className="mt-1 inline-flex items-center justify-center rounded-[0.85rem] bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          Lihat Riwayat Aktivitas
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
                   <div ref={userMenuRef} className="relative">
                     <button
                       type="button"
                       aria-expanded={isUserMenuOpen}
                       aria-haspopup="menu"
-                      onClick={() => setIsUserMenuOpen((current) => !current)}
+                      onClick={() => {
+                        setIsUserMenuOpen((current) => !current);
+                        setIsNotificationOpen(false);
+                      }}
                       className={`flex items-center gap-1 rounded-full border border-transparent py-0.5 pl-0.5 pr-1 transition ${
                         isUserMenuOpen
                           ? "border-slate-200 bg-slate-50"
@@ -469,6 +529,64 @@ function AdminHeaderAvatar({
   );
 }
 
+function NotificationItem({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <div className="rounded-[0.85rem] px-3 py-2.5 transition hover:bg-slate-50">
+      <div className="flex gap-3">
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-800">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatActivityEntity(entityType: AdminActivityItem["entityType"]) {
+  const labels: Record<AdminActivityItem["entityType"], string> = {
+    GURU: "Guru",
+    MAPEL: "Mapel",
+    PENGAMPU: "Pengampu",
+    PROFIL: "Profil",
+    SISWA: "Siswa",
+  };
+
+  return labels[entityType];
+}
+
+function formatRelativeActivityTime(date: Date) {
+  const activityTime = new Date(date).getTime();
+  const diffInSeconds = Math.max(0, Math.floor((Date.now() - activityTime) / 1000));
+
+  if (diffInSeconds < 60) {
+    return "baru saja";
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} menit lalu`;
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+
+  if (diffInHours < 24) {
+    return `${diffInHours} jam lalu`;
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(date));
+}
+
 function HomeIcon() {
   return (
     <svg aria-hidden="true" {...iconProps()}>
@@ -548,27 +666,6 @@ function BellIcon() {
       <path d="M18 17.5H6l1.4-2.1V11a4.6 4.6 0 0 1 9.2 0v4.4L18 17.5Z" />
       <path d="M10 20a2.2 2.2 0 0 0 4 0" />
       <path d="M12 5.2V3.8" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg aria-hidden="true" {...iconProps()}>
-      <path d="M18 13.5A6.5 6.5 0 1 1 10.5 6 5.5 5.5 0 0 0 18 13.5Z" />
-    </svg>
-  );
-}
-
-function GiftIcon() {
-  return (
-    <svg aria-hidden="true" {...iconProps()}>
-      <path d="M4.5 10.5h15" />
-      <path d="M12 10.5v9" />
-      <path d="M5.5 7.5h13A1.5 1.5 0 0 1 20 9v1.5H4V9a1.5 1.5 0 0 1 1.5-1.5Z" />
-      <path d="M6 10.5h12v7A1.5 1.5 0 0 1 16.5 19h-9A1.5 1.5 0 0 1 6 17.5v-7Z" />
-      <path d="M10.5 7.5c-1.7 0-3-1-3-2.3 0-.9.7-1.7 1.8-1.7 1.7 0 2.7 2.4 2.7 4Z" />
-      <path d="M13.5 7.5c1.7 0 3-1 3-2.3 0-.9-.7-1.7-1.8-1.7-1.7 0-2.7 2.4-2.7 4Z" />
     </svg>
   );
 }

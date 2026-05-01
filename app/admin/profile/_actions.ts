@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { recordAdminActivity } from "@/lib/admin/activity";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
@@ -143,6 +144,12 @@ export async function updateAdminProfileAction(formData: FormData) {
         email: parsedData.email,
         name: parsedData.name,
       },
+    });
+    await recordAdminActivity({
+      action: "UPDATE",
+      entityLabel: parsedData.name,
+      entityType: "PROFIL",
+      message: "Profil admin diperbarui",
     });
 
     if (uploadedAvatarUrl && previousAvatarUrl !== uploadedAvatarUrl) {
