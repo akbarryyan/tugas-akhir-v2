@@ -53,6 +53,25 @@ const columnsByType: Record<ImportType, Array<{ key: string; label: string }>> =
   ],
 };
 
+const exportColumnsByType: Record<ImportType, Array<{ key: string; label: string }>> = {
+  guru: [
+    { key: "name", label: "nama" },
+    { key: "email", label: "email" },
+    { key: "nip", label: "nip" },
+    { key: "password", label: "password" },
+  ],
+  mapel: [
+    { key: "name", label: "nama" },
+    { key: "description", label: "deskripsi" },
+    { key: "isActive", label: "status" },
+  ],
+  siswa: [
+    { key: "name", label: "nama" },
+    { key: "nisn", label: "nisn" },
+    { key: "className", label: "kelas" },
+  ],
+};
+
 export function AdminImportPreview({
   description,
   maxRowsLabel,
@@ -65,10 +84,48 @@ export function AdminImportPreview({
   const [isPreviewPending, startPreviewTransition] = useTransition();
   const { showToast } = useToast();
   const validRows = preview?.rows.filter((row) => row.status === "valid") ?? [];
+  const errorRows = preview?.rows.filter((row) => row.status === "error") ?? [];
   const canConfirm =
     preview?.status === "ready" &&
     preview.errorCount === 0 &&
     validRows.length > 0;
+
+  const handleDownloadErrors = () => {
+    if (errorRows.length === 0) {
+      showToast({
+        message: "Belum ada baris error untuk diunduh.",
+        type: "info",
+      });
+      return;
+    }
+
+    const csvHeader = ["baris", ...exportColumnsByType[type].map((column) => column.label), "error"];
+    const csvRows = errorRows.map((row) => [
+      String(row.rowNumber),
+      ...exportColumnsByType[type].map((column) => formatExportValue(row.data[column.key])),
+      row.errors.join("; "),
+    ]);
+    const csvContent = [csvHeader, ...csvRows]
+      .map((row) => row.map(escapeCsvCell).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF", csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = downloadUrl;
+    link.download = `import-${type}-error-rows.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
+
+    showToast({
+      message: `${errorRows.length} baris error berhasil diunduh.`,
+      type: "success",
+    });
+  };
 
   return (
     <div className="grid gap-4">
@@ -150,6 +207,15 @@ export function AdminImportPreview({
               <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
                 Error {preview.errorCount}
               </span>
+              {errorRows.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleDownloadErrors}
+                  className="inline-flex h-8 items-center justify-center rounded-full border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-50"
+                >
+                  Download Baris Error
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -257,6 +323,20 @@ function ConfirmImportSubmitButton({ disabled }: { disabled: boolean }) {
       {pending ? "Mengimpor..." : "Konfirmasi Import"}
     </button>
   );
+}
+
+function formatExportValue(value: string | boolean | undefined) {
+  if (typeof value === "boolean") {
+    return value ? "aktif" : "nonaktif";
+  }
+
+  return String(value ?? "").trim();
+}
+
+function escapeCsvCell(value: string) {
+  const normalized = value.replaceAll('"', '""');
+
+  return `"${normalized}"`;
 }
 
 function getGridClass(type: ImportType) {

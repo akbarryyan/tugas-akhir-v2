@@ -45,6 +45,31 @@ function getErrorMessage(error: unknown) {
   return "Terjadi kesalahan saat memperbarui profil admin.";
 }
 
+function buildChangeDetails(
+  changes: Array<{
+    after: string | null | undefined;
+    before: string | null | undefined;
+    label: string;
+  }>,
+) {
+  const details = changes
+    .filter((change) => formatDetailValue(change.before) !== formatDetailValue(change.after))
+    .map(
+      (change) =>
+        `${change.label}: ${formatDetailValue(change.before)} -> ${formatDetailValue(change.after)}`,
+    );
+
+  return details.length > 0
+    ? details.join("; ")
+    : "Tidak ada perubahan pada field utama.";
+}
+
+function formatDetailValue(value: string | null | undefined) {
+  const normalized = String(value ?? "").trim();
+
+  return normalized || "-";
+}
+
 async function saveAvatarFile(file: File, userId: string) {
   if (!file.type.startsWith("image/")) {
     throw new Error("File foto profil harus berupa gambar.");
@@ -114,7 +139,9 @@ export async function updateAdminProfileAction(formData: FormData) {
       },
       select: {
         avatarUrl: true,
+        email: true,
         id: true,
+        name: true,
         role: true,
       },
     });
@@ -147,6 +174,23 @@ export async function updateAdminProfileAction(formData: FormData) {
     });
     await recordAdminActivity({
       action: "UPDATE",
+      details: buildChangeDetails([
+        {
+          after: parsedData.name,
+          before: admin.name,
+          label: "Nama",
+        },
+        {
+          after: parsedData.email,
+          before: admin.email,
+          label: "Email",
+        },
+        {
+          after: uploadedAvatarUrl ? "Diubah" : "Tidak diubah",
+          before: "Tidak diubah",
+          label: "Foto Profil",
+        },
+      ]),
       entityLabel: parsedData.name,
       entityType: "PROFIL",
       message: "Profil admin diperbarui",

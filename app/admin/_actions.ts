@@ -352,6 +352,43 @@ function cellToString(value: unknown) {
   return String(value).trim();
 }
 
+function buildChangeDetails(
+  changes: Array<{
+    after: boolean | string | null | undefined;
+    before: boolean | string | null | undefined;
+    label: string;
+  }>,
+) {
+  const details = changes
+    .filter((change) => normalizeDetailValue(change.before) !== normalizeDetailValue(change.after))
+    .map(
+      (change) =>
+        `${change.label}: ${formatDetailValue(change.before)} -> ${formatDetailValue(change.after)}`,
+    );
+
+  return details.length > 0
+    ? details.join("; ")
+    : "Tidak ada perubahan pada field utama.";
+}
+
+function normalizeDetailValue(value: boolean | string | null | undefined) {
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+
+  return String(value ?? "").trim();
+}
+
+function formatDetailValue(value: boolean | string | null | undefined) {
+  if (typeof value === "boolean") {
+    return value ? "Aktif" : "Nonaktif";
+  }
+
+  const normalized = String(value ?? "").trim();
+
+  return normalized || "-";
+}
+
 function getImportRedirectPath(type: ImportType) {
   if (type === "guru") {
     return "/admin/guru";
@@ -1051,6 +1088,14 @@ export async function updateTeacherAction(formData: FormData) {
       teacherId: formData.get("teacherId"),
       userId: formData.get("userId"),
     });
+    const currentTeacher = await prisma.teacherProfile.findUnique({
+      include: {
+        user: true,
+      },
+      where: {
+        id: parsedData.teacherId,
+      },
+    });
 
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
@@ -1079,6 +1124,28 @@ export async function updateTeacherAction(formData: FormData) {
     });
     await recordAdminActivity({
       action: "UPDATE",
+      details: buildChangeDetails([
+        {
+          after: parsedData.name,
+          before: currentTeacher?.user.name,
+          label: "Nama",
+        },
+        {
+          after: parsedData.email,
+          before: currentTeacher?.user.email,
+          label: "Email",
+        },
+        {
+          after: parsedData.nip,
+          before: currentTeacher?.nip,
+          label: "NIP",
+        },
+        {
+          after: parsedData.password ? "Diubah" : "Tidak diubah",
+          before: "Tidak diubah",
+          label: "Password",
+        },
+      ]),
       entityLabel: parsedData.name,
       entityType: "GURU",
       message: `Guru ${parsedData.name} diperbarui`,
@@ -1246,6 +1313,14 @@ export async function updateStudentAction(formData: FormData) {
       studentId: formData.get("studentId"),
       userId: formData.get("userId"),
     });
+    const currentStudent = await prisma.studentProfile.findUnique({
+      include: {
+        user: true,
+      },
+      where: {
+        id: parsedData.studentId,
+      },
+    });
 
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
@@ -1269,6 +1344,23 @@ export async function updateStudentAction(formData: FormData) {
     });
     await recordAdminActivity({
       action: "UPDATE",
+      details: buildChangeDetails([
+        {
+          after: parsedData.name,
+          before: currentStudent?.user.name,
+          label: "Nama",
+        },
+        {
+          after: parsedData.nisn,
+          before: currentStudent?.nisn,
+          label: "NISN",
+        },
+        {
+          after: parsedData.className,
+          before: currentStudent?.className,
+          label: "Kelas",
+        },
+      ]),
       entityLabel: parsedData.name,
       entityType: "SISWA",
       message: `Siswa ${parsedData.name} diperbarui`,
@@ -1417,6 +1509,11 @@ export async function updateSubjectAction(formData: FormData) {
       name: formData.get("name"),
       subjectId: formData.get("subjectId"),
     });
+    const currentSubject = await prisma.subject.findUnique({
+      where: {
+        id: parsedData.subjectId,
+      },
+    });
 
     await prisma.subject.update({
       where: {
@@ -1430,6 +1527,23 @@ export async function updateSubjectAction(formData: FormData) {
     });
     await recordAdminActivity({
       action: "UPDATE",
+      details: buildChangeDetails([
+        {
+          after: parsedData.name,
+          before: currentSubject?.name,
+          label: "Nama",
+        },
+        {
+          after: parsedData.description || null,
+          before: currentSubject?.description,
+          label: "Deskripsi",
+        },
+        {
+          after: parsedData.isActive,
+          before: currentSubject?.isActive,
+          label: "Status",
+        },
+      ]),
       entityLabel: parsedData.name,
       entityType: "MAPEL",
       message: `Mata pelajaran ${parsedData.name} diperbarui`,
@@ -1504,6 +1618,13 @@ export async function toggleSubjectStatusAction(formData: FormData) {
     });
     await recordAdminActivity({
       action: "TOGGLE",
+      details: buildChangeDetails([
+        {
+          after: parsedData.isActive,
+          before: !parsedData.isActive,
+          label: "Status",
+        },
+      ]),
       entityLabel: subject?.name ?? "Mata Pelajaran",
       entityType: "MAPEL",
       message: `Status mata pelajaran ${subject?.name ?? ""}`.trim() + ` ${parsedData.isActive ? "diaktifkan" : "dinonaktifkan"}`,
