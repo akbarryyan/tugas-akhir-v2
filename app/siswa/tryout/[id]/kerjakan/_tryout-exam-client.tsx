@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { AnswerOption } from "@prisma/client";
@@ -23,11 +24,17 @@ type TryoutQuestionItem = {
 type TryoutExamClientProps = {
   durationMinutes: number | null;
   errorRedirectPath: string;
+  hasStarted: boolean;
+  onStart: () => void;
+  participantCode: string;
   questions: TryoutQuestionItem[];
+  startedAt: Date | null;
+  studentName: string | null;
   subjectName: string;
   submitAction: (formData: FormData) => Promise<void>;
   successRedirectPath: string;
   title: string;
+  tryoutCode: string;
   tryoutId: string;
 };
 
@@ -36,16 +43,24 @@ const EXAM_WARNING_THRESHOLD_SECONDS = 5 * 60;
 export function TryoutExamClient({
   durationMinutes,
   errorRedirectPath,
+  hasStarted,
+  onStart,
+  participantCode,
   questions,
+  startedAt,
+  studentName,
   subjectName,
   submitAction,
   successRedirectPath,
   title,
+  tryoutCode,
   tryoutId,
 }: TryoutExamClientProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, AnswerOption>>({});
   const [markedQuestions, setMarkedQuestions] = useState<Record<string, boolean>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isStartingExam, setIsStartingExam] = useState(false);
+  const [hasConfirmedInstructions, setHasConfirmedInstructions] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(
     durationMinutes ? durationMinutes * 60 : null,
   );
@@ -65,7 +80,7 @@ export function TryoutExamClient({
   const { showToast } = useToast();
 
   useEffect(() => {
-    if (remainingSeconds === null || remainingSeconds <= 0) {
+    if (!hasStarted || remainingSeconds === null || remainingSeconds <= 0) {
       return;
     }
 
@@ -87,9 +102,13 @@ export function TryoutExamClient({
     return () => {
       clearInterval(timer);
     };
-  }, [remainingSeconds]);
+  }, [hasStarted, remainingSeconds]);
 
   useEffect(() => {
+    if (!hasStarted) {
+      return;
+    }
+
     if (
       remainingSeconds === null ||
       remainingSeconds > EXAM_WARNING_THRESHOLD_SECONDS ||
@@ -103,9 +122,13 @@ export function TryoutExamClient({
       message: "Waktu ujian tinggal 5 menit. Periksa kembali jawabanmu sebelum dikirim.",
       type: "info",
     });
-  }, [remainingSeconds, showToast]);
+  }, [hasStarted, remainingSeconds, showToast]);
 
   useEffect(() => {
+    if (!hasStarted) {
+      return;
+    }
+
     if (remainingSeconds !== 0 || isTimeUpShownRef.current) {
       return;
     }
@@ -115,7 +138,7 @@ export function TryoutExamClient({
       message: "Waktu ujian telah habis. Segera kirim jawabanmu sekarang.",
       type: "error",
     });
-  }, [remainingSeconds, showToast]);
+  }, [hasStarted, remainingSeconds, showToast]);
 
   const questionPaletteItems = useMemo(
     () =>
@@ -135,6 +158,7 @@ export function TryoutExamClient({
       : `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(
           remainingSeconds % 60,
         ).padStart(2, "0")}`;
+  const startedAtLabel = startedAt ? formatStartTime(startedAt) : "Belum dimulai";
 
   return (
     <form action={submitAction} className="flex min-h-0 flex-1 flex-col">
@@ -142,6 +166,160 @@ export function TryoutExamClient({
       <input type="hidden" name="errorRedirectPath" value={errorRedirectPath} />
       <input type="hidden" name="successRedirectPath" value={successRedirectPath} />
 
+      {!hasStarted ? (
+        <div className="flex flex-1 items-start justify-center px-5 py-5 sm:px-6">
+          <section className="w-full max-w-5xl rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-[0_24px_64px_rgba(15,23,42,0.08)] sm:p-7">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_320px]">
+              <div>
+                <span className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                  Petunjuk Pengerjaan
+                </span>
+                <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">
+                  Baca aturan tryout ini sebelum mulai
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                  Halo {studentName ?? "peserta"}, pastikan kamu memahami alur
+                  pengerjaan terlebih dulu. Setelah menekan tombol mulai, timer
+                  ujian akan berjalan dan soal tampil satu per satu seperti mode
+                  CBT.
+                </p>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <PrepInfoCard
+                    label="Jumlah soal"
+                    value={`${questions.length} soal`}
+                  />
+                  <PrepInfoCard
+                    label="Durasi"
+                    value={durationMinutes ? `${durationMinutes} menit` : "Fleksibel"}
+                  />
+                  <PrepInfoCard label="Nomor peserta" value={participantCode} />
+                  <PrepInfoCard label="Kode tryout" value={tryoutCode} />
+                </div>
+
+                <div className="mt-6 rounded-[1.6rem] border border-sky-200 bg-[linear-gradient(135deg,#e0f2fe_0%,#f8fbff_55%,#ffffff_100%)] p-5 shadow-[0_16px_40px_rgba(14,165,233,0.08)]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                    Alokasi Waktu
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-end gap-3">
+                    <span className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-[2.8rem]">
+                      {durationMinutes ? durationMinutes : "∞"}
+                    </span>
+                    <span className="pb-1 text-sm font-medium text-slate-500">
+                      {durationMinutes ? "menit pengerjaan" : "tanpa batas waktu"}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    Waktu akan mulai dihitung setelah kamu menekan tombol mulai
+                    ujian. Gunakan waktu dengan tenang, tetapi tetap jaga ritme
+                    pengerjaan agar semua soal sempat ditinjau.
+                  </p>
+                </div>
+
+                <div className="mt-6 rounded-[1.4rem] border border-slate-200/80 bg-slate-50 p-5">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Aturan penting
+                  </p>
+                  <ul className="mt-3 space-y-3 text-sm leading-7 text-slate-600">
+                    <li>Kerjakan soal satu per satu dan gunakan panel nomor untuk berpindah soal.</li>
+                    <li>Kamu bisa menandai soal ragu-ragu untuk ditinjau ulang sebelum submit.</li>
+                    <li>Jawaban hanya akan tersimpan saat kamu mengirim tryout di akhir ujian.</li>
+                    <li>Setelah jawaban dikirim, tryout tidak bisa dikerjakan ulang.</li>
+                    <li>Pastikan koneksi stabil dan tetap berada di halaman ujian sampai selesai.</li>
+                  </ul>
+                </div>
+
+                <div className="mt-6 rounded-[1.4rem] border border-rose-200 bg-rose-50/80 p-5">
+                  <p className="text-sm font-semibold text-rose-900">
+                    Larangan selama ujian
+                  </p>
+                  <ul className="mt-3 space-y-3 text-sm leading-7 text-rose-800">
+                    <li>Jangan menutup tab atau berpindah halaman tanpa alasan yang jelas saat ujian berlangsung.</li>
+                    <li>Jangan menunda submit sampai detik terakhir jika seluruh jawaban sudah siap dikirim.</li>
+                    <li>Jangan abaikan soal yang ditandai ragu-ragu sebelum kamu melakukan peninjauan akhir.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Checklist sebelum mulai
+                </p>
+                <div className="mt-4 space-y-3">
+                  <PrepChecklistItem text="Sudah membaca seluruh petunjuk dan aturan pengerjaan." />
+                  <PrepChecklistItem text="Sudah siap fokus mengerjakan tryout sampai selesai." />
+                  <PrepChecklistItem text="Sudah memahami bahwa timer baru berjalan setelah mulai ujian." />
+                </div>
+
+                <div className="mt-6 rounded-[1.3rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                  Setelah kamu menekan tombol mulai, sistem akan langsung membuka
+                  sesi pengerjaan tryout dan jam mulai ujian tercatat otomatis.
+                </div>
+
+                <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-[1.2rem] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600 transition hover:border-sky-200 hover:bg-sky-50/40">
+                  <input
+                    checked={hasConfirmedInstructions}
+                    type="checkbox"
+                    onChange={(event) => {
+                      setHasConfirmedInstructions(event.target.checked);
+                    }}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-600"
+                  />
+                  <span>
+                    Saya sudah membaca petunjuk, memahami aturan pengerjaan,
+                    dan siap memulai tryout ini dengan sungguh-sungguh.
+                  </span>
+                </label>
+
+                <div className="mt-6 grid gap-3">
+                  <button
+                    type="button"
+                    disabled={isStartingExam || !hasConfirmedInstructions}
+                    onClick={() => {
+                      if (!hasConfirmedInstructions) {
+                        showToast({
+                          message: "Centang persetujuan dulu sebelum memulai ujian.",
+                          type: "error",
+                        });
+                        return;
+                      }
+
+                      setIsStartingExam(true);
+                      window.setTimeout(() => {
+                        onStart();
+                        setIsStartingExam(false);
+                      }, 520);
+                    }}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isStartingExam ? (
+                      <>
+                        <SpinnerIcon />
+                        Menyiapkan ujian...
+                      </>
+                    ) : (
+                      "Saya Paham, Mulai Ujian"
+                    )}
+                  </button>
+                  <Link
+                    href={successRedirectPath}
+                    className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Kembali ke Detail Tryout
+                  </Link>
+                </div>
+                {!hasConfirmedInstructions ? (
+                  <p className="mt-3 text-center text-xs leading-6 text-slate-500">
+                    Centang persetujuan di atas agar tombol mulai bisa digunakan.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {hasStarted ? (
       <div className="grid min-h-0 flex-1 gap-5 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-h-0 space-y-4 overflow-y-auto pr-1">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.3rem] border border-slate-200/80 bg-slate-50/80 px-4 py-3">
@@ -375,6 +553,7 @@ export function TryoutExamClient({
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <ExamMetaItem label="Sisa waktu" value={timerLabel} />
+              <ExamMetaItem label="Jam mulai" value={startedAtLabel} />
               <ExamMetaItem label="Sudah dijawab" value={`${answeredCount}`} />
               <ExamMetaItem label="Belum dijawab" value={`${unansweredCount}`} />
               <ExamMetaItem label="Ditandai" value={`${markedCount}`} />
@@ -397,8 +576,46 @@ export function TryoutExamClient({
           </div>
         </aside>
       </div>
+      ) : null}
     </form>
   );
+}
+
+function PrepInfoCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[1.2rem] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function PrepChecklistItem({ text }: { text: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-[1.1rem] border border-slate-200/80 bg-white px-4 py-3">
+      <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-semibold text-emerald-700">
+        ✓
+      </span>
+      <p className="text-sm leading-6 text-slate-600">{text}</p>
+    </div>
+  );
+}
+
+function formatStartTime(value: Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(value);
 }
 
 function AnswerChoice({

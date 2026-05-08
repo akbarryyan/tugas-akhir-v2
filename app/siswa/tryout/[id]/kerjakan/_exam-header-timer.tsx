@@ -4,15 +4,19 @@ import { useEffect, useState } from "react";
 
 type ExamHeaderTimerProps = {
   durationMinutes: number | null;
+  hasStarted: boolean;
 };
 
-export function ExamHeaderTimer({ durationMinutes }: ExamHeaderTimerProps) {
+export function ExamHeaderTimer({
+  durationMinutes,
+  hasStarted,
+}: ExamHeaderTimerProps) {
   const [remainingSeconds, setRemainingSeconds] = useState(
     durationMinutes ? durationMinutes * 60 : null,
   );
 
   useEffect(() => {
-    if (remainingSeconds === null || remainingSeconds <= 0) {
+    if (!hasStarted || remainingSeconds === null || remainingSeconds <= 0) {
       return;
     }
 
@@ -34,7 +38,18 @@ export function ExamHeaderTimer({ durationMinutes }: ExamHeaderTimerProps) {
     return () => {
       window.clearInterval(timer);
     };
-  }, [remainingSeconds]);
+  }, [hasStarted, remainingSeconds]);
+
+  if (!hasStarted) {
+    return (
+      <div className="rounded-[1.2rem] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+          Waktu Ujian
+        </p>
+        <p className="mt-1 text-sm font-semibold text-slate-900">Belum dimulai</p>
+      </div>
+    );
+  }
 
   if (remainingSeconds === null) {
     return (
