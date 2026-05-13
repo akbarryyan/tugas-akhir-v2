@@ -3,6 +3,11 @@ import { Prisma, TryoutStatus } from "@prisma/client";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import {
+  REQUIRED_FEEDBACK_ASPECT_COUNT,
+  getFeedbackCompletionCount,
+  isFeedbackComplete,
+} from "@/lib/student-feedback";
 
 export default async function SiswaPage() {
   const session = await getCurrentSession();
@@ -21,10 +26,9 @@ export default async function SiswaPage() {
     availableTryoutCount,
     completedTryoutCount,
     latestFinishedTryout,
-    pendingFeedbackCount,
+    feedbackTrackedSessions,
     availableTryouts,
     recentTryoutResults,
-    pendingFeedbackSessions,
   ] =
     studentProfile
       ? await Promise.all([
@@ -80,16 +84,40 @@ export default async function SiswaPage() {
               score: true,
             },
           }),
-          prisma.tryoutSession.count({
+          prisma.tryoutSession.findMany({
             where: {
               studentId: studentProfile.id,
               status: {
                 in: [TryoutStatus.SUBMITTED, TryoutStatus.GRADED],
               },
+            },
+            select: {
+              id: true,
+              submittedAt: true,
               feedbacks: {
-                none: {},
+                select: {
+                  aspect: true,
+                },
+              },
+              tryout: {
+                select: {
+                  title: true,
+                  subject: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
               },
             },
+            orderBy: [
+              {
+                submittedAt: "desc",
+              },
+              {
+                updatedAt: "desc",
+              },
+            ],
           }),
           prisma.tryout.findMany({
             where: {
@@ -159,42 +187,15 @@ export default async function SiswaPage() {
             ],
             take: 4,
           }),
-          prisma.tryoutSession.findMany({
-            where: {
-              studentId: studentProfile.id,
-              status: {
-                in: [TryoutStatus.SUBMITTED, TryoutStatus.GRADED],
-              },
-              feedbacks: {
-                none: {},
-              },
-            },
-            select: {
-              id: true,
-              submittedAt: true,
-              tryout: {
-                select: {
-                  title: true,
-                  subject: {
-                    select: {
-                      name: true,
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: [
-              {
-                submittedAt: "desc",
-              },
-              {
-                updatedAt: "desc",
-              },
-            ],
-            take: 4,
-          }),
         ])
-      : [0, 0, null, 0, [], [], []];
+      : [0, 0, null, [], [], []];
+
+  const pendingFeedbackSessions = feedbackTrackedSessions
+    .filter((sessionItem) => !isFeedbackComplete(sessionItem.feedbacks))
+    .slice(0, 4);
+  const pendingFeedbackCount = feedbackTrackedSessions.filter(
+    (sessionItem) => !isFeedbackComplete(sessionItem.feedbacks),
+  ).length;
 
   const latestScore =
     latestFinishedTryout?.score !== null && latestFinishedTryout?.score !== undefined
@@ -553,6 +554,8 @@ export default async function SiswaPage() {
                 pendingFeedbackSessions.map((session) => (
                   <PendingFeedbackCard
                     key={session.id}
+                    completionCount={getFeedbackCompletionCount(session.feedbacks)}
+                    sessionId={session.id}
                     subjectName={session.tryout.subject.name}
                     title={session.tryout.title}
                   />
@@ -561,7 +564,11 @@ export default async function SiswaPage() {
             </div>
             <div className="mt-5">
               <Link
-                href="/siswa/tanggapan"
+                href={
+                  pendingFeedbackSessions[0]
+                    ? `/siswa/tanggapan?session=${pendingFeedbackSessions[0].id}#form-tanggapan`
+                    : "/siswa/tanggapan"
+                }
                 className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
               >
                 Buka Tanggapan
@@ -766,17 +773,31 @@ function ResultActivityRow({
 }
 
 function PendingFeedbackCard({
+  completionCount,
+  sessionId,
   subjectName,
   title,
 }: {
+  completionCount: number;
+  sessionId: string;
   subjectName: string;
   title: string;
 }) {
   return (
-    <div className="rounded-[1.4rem] border border-slate-200/80 bg-slate-50/70 px-4 py-3">
-      <p className="text-sm font-semibold text-slate-950">{title}</p>
-      <p className="mt-1 text-sm text-slate-500">{subjectName}</p>
-    </div>
+    <Link
+      href={`/siswa/tanggapan?session=${sessionId}#form-tanggapan`}
+      className="block rounded-[1.4rem] border border-slate-200/80 bg-slate-50/70 px-4 py-3 transition hover:border-blue-200 hover:bg-blue-50/60"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-950">{title}</p>
+          <p className="mt-1 text-sm text-slate-500">{subjectName}</p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-orange-700">
+          {completionCount}/{REQUIRED_FEEDBACK_ASPECT_COUNT}
+        </span>
+      </div>
+    </Link>
   );
 }
 

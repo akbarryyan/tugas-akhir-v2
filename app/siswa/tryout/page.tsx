@@ -4,6 +4,7 @@ import { TryoutStatus } from "@prisma/client";
 import { StartTryoutButton } from "@/app/siswa/tryout/_start-tryout-button";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { isFeedbackComplete } from "@/lib/student-feedback";
 
 export default async function SiswaTryoutPage() {
   const session = await getCurrentSession();
@@ -18,7 +19,7 @@ export default async function SiswaTryoutPage() {
     },
   });
 
-  const [availableTryouts, completedSessions, pendingFeedbackCount] = await Promise.all([
+  const [availableTryouts, completedSessions] = await Promise.all([
     prisma.tryout.findMany({
       where: {
         isPublished: true,
@@ -79,9 +80,8 @@ export default async function SiswaTryoutPage() {
             submittedAt: true,
             feedbacks: {
               select: {
-                id: true,
+                aspect: true,
               },
-              take: 1,
             },
           },
           orderBy: [
@@ -94,19 +94,6 @@ export default async function SiswaTryoutPage() {
           ],
         })
       : [],
-    studentProfile
-      ? prisma.tryoutSession.count({
-          where: {
-            studentId: studentProfile.id,
-            status: {
-              in: [TryoutStatus.SUBMITTED, TryoutStatus.GRADED],
-            },
-            feedbacks: {
-              none: {},
-            },
-          },
-        })
-      : 0,
   ]);
 
   const latestSessionByTryout = new Map<string, (typeof completedSessions)[number]>();
@@ -117,11 +104,15 @@ export default async function SiswaTryoutPage() {
     }
   }
 
+  const pendingFeedbackCount = Array.from(latestSessionByTryout.values()).filter(
+    (sessionItem) => !isFeedbackComplete(sessionItem.feedbacks),
+  ).length;
+
   const completedTryoutCount = latestSessionByTryout.size;
 
   const tryoutItems = availableTryouts.map((tryout) => {
     const latestSession = latestSessionByTryout.get(tryout.id);
-    const needsFeedback = latestSession ? latestSession.feedbacks.length === 0 : false;
+    const needsFeedback = latestSession ? !isFeedbackComplete(latestSession.feedbacks) : false;
     const status: "Belum Dikerjakan" | "Perlu Tanggapan" | "Selesai" = latestSession
       ? needsFeedback
         ? "Perlu Tanggapan"
@@ -232,6 +223,7 @@ export default async function SiswaTryoutPage() {
                     : null
                 }
                 questionCount={tryout._count.tryoutQuestions}
+                pendingSessionId={tryout.latestSession?.id ?? null}
                 status={tryout.status}
                 subjectName={tryout.subject.name}
                 title={tryout.title}
@@ -312,6 +304,7 @@ function TryoutListCard({
   description,
   durationMinutes,
   latestScore,
+  pendingSessionId,
   questionCount,
   status,
   subjectName,
@@ -321,6 +314,7 @@ function TryoutListCard({
   description: string | null;
   durationMinutes: number | null;
   latestScore: string | null;
+  pendingSessionId: string | null;
   questionCount: number;
   status: "Belum Dikerjakan" | "Perlu Tanggapan" | "Selesai";
   subjectName: string;
@@ -336,7 +330,9 @@ function TryoutListCard({
   const primaryCta =
     status === "Perlu Tanggapan"
       ? {
-          href: "/siswa/tanggapan",
+          href: pendingSessionId
+            ? `/siswa/tanggapan?session=${pendingSessionId}#form-tanggapan`
+            : "/siswa/tanggapan",
           label: "Isi Tanggapan",
         }
       : status === "Selesai"

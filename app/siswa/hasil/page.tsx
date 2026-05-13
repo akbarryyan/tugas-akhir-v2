@@ -3,6 +3,7 @@ import { TryoutStatus } from "@prisma/client";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { isFeedbackComplete } from "@/lib/student-feedback";
 
 export default async function SiswaHasilPage() {
   const session = await getCurrentSession();
@@ -40,9 +41,8 @@ export default async function SiswaHasilPage() {
           status: true,
           feedbacks: {
             select: {
-              id: true,
+              aspect: true,
             },
-            take: 1,
           },
           tryout: {
             select: {
@@ -88,7 +88,7 @@ export default async function SiswaHasilPage() {
         ).toFixed(0);
 
   const waitingFeedbackCount = completedSessions.filter(
-    (sessionItem) => sessionItem.feedbacks.length === 0,
+    (sessionItem) => !isFeedbackComplete(sessionItem.feedbacks),
   ).length;
 
   return (
@@ -155,7 +155,8 @@ export default async function SiswaHasilPage() {
               <ResultHistoryCard
                 key={sessionItem.id}
                 correctAnswers={sessionItem.correctAnswers}
-                hasFeedback={sessionItem.feedbacks.length > 0}
+                hasFeedback={isFeedbackComplete(sessionItem.feedbacks)}
+                pendingSessionId={sessionItem.id}
                 score={
                   sessionItem.score !== null && sessionItem.score !== undefined
                     ? Number(sessionItem.score).toFixed(0)
@@ -214,6 +215,7 @@ function ResultSummaryCard({
 function ResultHistoryCard({
   correctAnswers,
   hasFeedback,
+  pendingSessionId,
   score,
   status,
   subjectName,
@@ -224,6 +226,7 @@ function ResultHistoryCard({
 }: {
   correctAnswers: number;
   hasFeedback: boolean;
+  pendingSessionId: string;
   score: string;
   status: TryoutStatus;
   subjectName: string;
@@ -267,7 +270,7 @@ function ResultHistoryCard({
         </Link>
         {!hasFeedback ? (
           <Link
-            href="/siswa/tanggapan"
+            href={`/siswa/tanggapan?session=${pendingSessionId}#form-tanggapan`}
             className="inline-flex h-11 items-center rounded-full border border-orange-200 bg-orange-50 px-5 text-sm font-semibold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100"
           >
             Isi Tanggapan

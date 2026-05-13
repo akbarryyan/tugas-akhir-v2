@@ -3,6 +3,7 @@ import { TryoutStatus } from "@prisma/client";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { isFeedbackComplete } from "@/lib/student-feedback";
 
 export default async function SiswaProgresPage() {
   const session = await getCurrentSession();
@@ -17,7 +18,7 @@ export default async function SiswaProgresPage() {
     },
   });
 
-  const [availableTryoutCount, completedSessions, pendingFeedbackCount] = await Promise.all([
+  const [availableTryoutCount, completedSessions] = await Promise.all([
     prisma.tryout.count({
       where: {
         isPublished: true,
@@ -51,6 +52,11 @@ export default async function SiswaProgresPage() {
             id: true,
             score: true,
             correctAnswers: true,
+            feedbacks: {
+              select: {
+                aspect: true,
+              },
+            },
             totalQuestions: true,
             submittedAt: true,
             tryout: {
@@ -75,20 +81,11 @@ export default async function SiswaProgresPage() {
           ],
         })
       : [],
-    studentProfile
-      ? prisma.tryoutSession.count({
-          where: {
-            studentId: studentProfile.id,
-            status: {
-              in: [TryoutStatus.SUBMITTED, TryoutStatus.GRADED],
-            },
-            feedbacks: {
-              none: {},
-            },
-          },
-        })
-      : 0,
   ]);
+
+  const pendingFeedbackCount = completedSessions.filter(
+    (sessionItem) => !isFeedbackComplete(sessionItem.feedbacks),
+  ).length;
 
   const completionRate =
     availableTryoutCount === 0

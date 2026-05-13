@@ -5,6 +5,11 @@ import { StatusAlert } from "@/app/admin/_components";
 import { StartTryoutButton } from "@/app/siswa/tryout/_start-tryout-button";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import {
+  REQUIRED_FEEDBACK_ASPECT_COUNT,
+  getFeedbackCompletionCount,
+  isFeedbackComplete,
+} from "@/lib/student-feedback";
 
 type SiswaTryoutDetailPageProps = {
   params: Promise<{
@@ -100,6 +105,11 @@ export default async function SiswaTryoutDetailPage({
                 isCorrect: true,
               },
             },
+            feedbacks: {
+              select: {
+                aspect: true,
+              },
+            },
           },
           orderBy: [
             {
@@ -164,6 +174,12 @@ export default async function SiswaTryoutDetailPage({
   const answerMap = new Map(
     latestSession?.answers.map((answer) => [answer.questionId, answer]) ?? [],
   );
+  const feedbackCompletionCount = latestSession
+    ? getFeedbackCompletionCount(latestSession.feedbacks)
+    : 0;
+  const hasCompleteFeedback = latestSession
+    ? isFeedbackComplete(latestSession.feedbacks)
+    : false;
 
   return (
     <div className="space-y-6">
@@ -207,7 +223,7 @@ export default async function SiswaTryoutDetailPage({
 
       {latestSession ? (
         <section className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StudentSummaryCard
               label="Nilai Akhir"
               value={Number(latestSession.score ?? 0).toFixed(0)}
@@ -223,7 +239,41 @@ export default async function SiswaTryoutDetailPage({
               value={latestSession.status === TryoutStatus.GRADED ? "Dinilai" : "Terkirim"}
               description="Hasil terbaru sudah tercatat pada sistem."
             />
+            <StudentSummaryCard
+              label="Tanggapan"
+              value={`${feedbackCompletionCount}/${REQUIRED_FEEDBACK_ASPECT_COUNT} aspek`}
+              description={
+                hasCompleteFeedback
+                  ? "Tanggapan belajar untuk tryout ini sudah lengkap."
+                  : "Masih ada aspek tanggapan yang perlu kamu lengkapi."
+              }
+            />
           </div>
+
+          {!hasCompleteFeedback ? (
+            <section className="rounded-[1.6rem] border border-orange-200 bg-orange-50/70 p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">
+                    Tindak Lanjut
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-950">
+                    Lengkapi tanggapan belajarmu
+                  </h2>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">
+                    Agar evaluasi tryout ini utuh, isi seluruh aspek tanggapan
+                    materi, penyampaian, dan soal pada halaman tanggapan.
+                  </p>
+                </div>
+                <Link
+                  href={`/siswa/tanggapan?session=${latestSession.id}#form-tanggapan`}
+                  className="inline-flex h-11 items-center rounded-full bg-orange-500 px-5 text-sm font-semibold text-white transition hover:bg-orange-400"
+                >
+                  Isi Tanggapan Sekarang
+                </Link>
+              </div>
+            </section>
+          ) : null}
 
           <section className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

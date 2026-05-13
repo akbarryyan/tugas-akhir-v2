@@ -1,12 +1,35 @@
 import Link from "next/link";
 import { LearningAspect, SentimentLabel, TryoutStatus } from "@prisma/client";
 
+import { StatusAlert } from "@/app/admin/_components";
+import { submitStudentFeedbackAction } from "@/app/siswa/tanggapan/_actions";
+import { SubmitFeedbackButton } from "@/app/siswa/tanggapan/_submit-feedback-button";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import {
+  REQUIRED_FEEDBACK_ASPECT_COUNT,
+  REQUIRED_FEEDBACK_ASPECTS,
+  feedbackAspectLabelMap,
+  getFeedbackCompletionCount,
+  getMissingFeedbackAspects,
+  isFeedbackComplete,
+} from "@/lib/student-feedback";
 
-export default async function SiswaTanggapanPage() {
+type SiswaTanggapanPageProps = {
+  searchParams?: Promise<{
+    message?: string;
+    session?: string;
+    type?: string;
+  }>;
+};
+
+export default async function SiswaTanggapanPage({
+  searchParams,
+}: SiswaTanggapanPageProps) {
   const session = await getCurrentSession();
   const studentUserId = session?.user.id ?? "";
+  const resolvedSearchParams = await searchParams;
+  const selectedSessionId = resolvedSearchParams?.session?.trim() ?? "";
 
   const studentProfile = await prisma.studentProfile.findUnique({
     where: {
@@ -17,16 +40,13 @@ export default async function SiswaTanggapanPage() {
     },
   });
 
-  const [pendingSessions, recentFeedbacks] = studentProfile
+  const [completedSessions, recentFeedbacks] = studentProfile
     ? await Promise.all([
         prisma.tryoutSession.findMany({
           where: {
             studentId: studentProfile.id,
             status: {
               in: [TryoutStatus.SUBMITTED, TryoutStatus.GRADED],
-            },
-            feedbacks: {
-              none: {},
             },
             tryout: {
               isPublished: true,
@@ -38,6 +58,13 @@ export default async function SiswaTanggapanPage() {
           select: {
             id: true,
             submittedAt: true,
+            status: true,
+            feedbacks: {
+              select: {
+                aspect: true,
+                comment: true,
+              },
+            },
             tryout: {
               select: {
                 id: true,
@@ -98,16 +125,24 @@ export default async function SiswaTanggapanPage() {
       ])
     : [[], []];
 
-  const uniquePendingTryouts = new Map<string, (typeof pendingSessions)[number]>();
-
-  for (const pendingSession of pendingSessions) {
-    if (!uniquePendingTryouts.has(pendingSession.tryout.id)) {
-      uniquePendingTryouts.set(pendingSession.tryout.id, pendingSession);
-    }
-  }
-
-  const pendingTryoutItems = Array.from(uniquePendingTryouts.values());
+  const pendingSessions = completedSessions.filter(
+    (sessionItem) => !isFeedbackComplete(sessionItem.feedbacks),
+  );
+  const selectedPendingSession =
+    pendingSessions.find((sessionItem) => sessionItem.id === selectedSessionId) ??
+    pendingSessions[0] ??
+    null;
   const sentimentReadyCount = recentFeedbacks.filter((item) => item.sentiment).length;
+  const completedFeedbackSessionCount = completedSessions.filter((sessionItem) =>
+    isFeedbackComplete(sessionItem.feedbacks),
+  ).length;
+
+  const defaultCommentsByAspect = Object.fromEntries(
+    REQUIRED_FEEDBACK_ASPECTS.map((aspect) => [
+      aspect,
+      selectedPendingSession?.feedbacks.find((item) => item.aspect === aspect)?.comment ?? "",
+    ]),
+  ) as Record<LearningAspect, string>;
 
   return (
     <div className="space-y-5">
@@ -120,61 +155,76 @@ export default async function SiswaTanggapanPage() {
             Tanggapan
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
-            Kelola tanggapan belajar setelah tryout selesai dan lihat ringkasan umpan balik yang
-            sudah pernah kamu kirim.
+            Lengkapi evaluasi belajar per tryout dengan tiga aspek utama: materi, penyampaian,
+            dan kualitas soal. Dengan begitu, tindak lanjut belajarmu jadi lebih jelas dan utuh.
           </p>
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-3">
+      <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
+
+      <section className="grid gap-4 xl:grid-cols-4">
         <FeedbackSummaryCard
-          label="Menunggu Tanggapan"
-          helper="Tryout yang sudah selesai tetapi belum kamu beri umpan balik."
+          helper="Tryout yang masih perlu dilengkapi seluruh aspek tanggapannya."
+          label="Perlu Tanggapan"
           tone="orange"
-          value={String(pendingTryoutItems.length)}
+          value={String(pendingSessions.length)}
         />
         <FeedbackSummaryCard
-          label="Riwayat Tanggapan"
-          helper="Jumlah tanggapan yang sudah tersimpan pada sistem."
+          helper="Jumlah sesi tryout yang seluruh aspek feedback-nya sudah lengkap."
+          label="Tanggapan Lengkap"
+          tone="emerald"
+          value={String(completedFeedbackSessionCount)}
+        />
+        <FeedbackSummaryCard
+          helper="Total feedback aspek yang sudah pernah kamu kirim ke sistem."
+          label="Riwayat Feedback"
           tone="blue"
           value={String(recentFeedbacks.length)}
         />
         <FeedbackSummaryCard
+          helper="Feedback yang sudah punya hasil analisis sentimen."
           label="Analisis Sentimen"
-          helper="Tanggapan yang sudah punya hasil analisis sentimen."
-          tone="emerald"
+          tone="violet"
           value={String(sentimentReadyCount)}
         />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+      <section className="grid gap-5 xl:grid-cols-[0.96fr_1.04fr]">
         <section className="rounded-[1.8rem] border border-white/80 bg-white p-5 shadow-[0_20px_48px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-2 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-slate-950">
-                Tryout yang Menunggu Tanggapan
+                Sesi yang Perlu Ditindak Lanjuti
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Lengkapi tanggapan setelah tryout agar evaluasi pembelajaranmu lebih utuh.
+                Pilih tryout yang ingin kamu lengkapi tanggapannya. Status lengkap dihitung jika
+                ketiga aspek utama sudah terisi.
               </p>
             </div>
             <Link
               href="/siswa/hasil"
               className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
             >
-              Lihat Hasil
+              Buka Hasil
             </Link>
           </div>
 
-          {pendingTryoutItems.length === 0 ? (
-            <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-6 text-sm leading-7 text-slate-500">
-              Semua tryout yang selesai sudah memiliki tanggapan.
+          {pendingSessions.length === 0 ? (
+            <div className="mt-5 rounded-[1.5rem] border border-dashed border-emerald-200 bg-emerald-50/60 px-5 py-6 text-sm leading-7 text-emerald-800">
+              Semua tryout selesai sudah memiliki tanggapan lengkap. Kamu bisa lanjut mengerjakan
+              tryout lain atau meninjau riwayat feedback di bawah.
             </div>
           ) : (
             <div className="mt-5 grid gap-4">
-              {pendingTryoutItems.map((sessionItem) => (
+              {pendingSessions.map((sessionItem) => (
                 <PendingFeedbackTryoutCard
                   key={sessionItem.id}
+                  completionCount={getFeedbackCompletionCount(sessionItem.feedbacks)}
+                  isActive={selectedPendingSession?.id === sessionItem.id}
+                  missingAspects={getMissingFeedbackAspects(sessionItem.feedbacks)}
+                  selectedSessionId={selectedPendingSession?.id ?? null}
+                  sessionId={sessionItem.id}
                   subjectName={sessionItem.tryout.subject.name}
                   submittedAt={sessionItem.submittedAt}
                   title={sessionItem.tryout.title}
@@ -185,37 +235,128 @@ export default async function SiswaTanggapanPage() {
           )}
         </section>
 
-        <section className="rounded-[1.8rem] border border-white/80 bg-white p-5 shadow-[0_20px_48px_rgba(15,23,42,0.06)]">
+        <section
+          id="form-tanggapan"
+          className="rounded-[1.8rem] border border-white/80 bg-white p-5 shadow-[0_20px_48px_rgba(15,23,42,0.06)]"
+        >
           <div className="border-b border-slate-200/80 pb-4">
             <h2 className="text-xl font-semibold tracking-tight text-slate-950">
-              Riwayat Tanggapan Terkirim
+              Form Tanggapan Belajar
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Ringkasan tanggapan yang sudah kamu kirim berdasarkan aspek pembelajaran.
+              Isi seluruh aspek agar evaluasi tryout tersimpan lengkap dan mudah ditindak lanjuti.
             </p>
           </div>
 
-          {recentFeedbacks.length === 0 ? (
+          {!selectedPendingSession ? (
             <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-6 text-sm leading-7 text-slate-500">
-              Belum ada tanggapan yang tersimpan.
+              Tidak ada sesi yang perlu diisi saat ini. Setelah menyelesaikan tryout baru, form
+              tanggapan akan muncul otomatis di sini.
             </div>
           ) : (
-            <div className="mt-5 space-y-3">
-              {recentFeedbacks.map((feedbackItem) => (
-                <FeedbackHistoryCard
-                  key={feedbackItem.id}
-                  aspect={feedbackItem.aspect}
-                  comment={feedbackItem.comment}
-                  createdAt={feedbackItem.createdAt}
-                  sentiment={feedbackItem.sentiment?.label ?? null}
-                  subjectName={feedbackItem.subject.name}
-                  title={feedbackItem.tryoutSession.tryout.title}
-                  tryoutId={feedbackItem.tryoutSession.tryout.id}
+            <form action={submitStudentFeedbackAction} className="mt-5 space-y-5">
+              <input
+                type="hidden"
+                name="tryoutSessionId"
+                value={selectedPendingSession.id}
+              />
+
+              <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/60 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">
+                      Sesi Dipilih
+                    </p>
+                    <h3 className="mt-2 text-lg font-semibold text-slate-950">
+                      {selectedPendingSession.tryout.title}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {selectedPendingSession.tryout.subject.name} • selesai dikerjakan{" "}
+                      {selectedPendingSession.submittedAt
+                        ? formatDateTime(selectedPendingSession.submittedAt)
+                        : "baru-baru ini"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700">
+                      {getFeedbackCompletionCount(selectedPendingSession.feedbacks)}/
+                      {REQUIRED_FEEDBACK_ASPECT_COUNT} aspek terisi
+                    </span>
+                    <Link
+                      href={`/siswa/tryout/${selectedPendingSession.tryout.id}`}
+                      className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
+                    >
+                      Lihat Detail Tryout
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                <FeedbackTextareaField
+                  name="materi"
+                  title="Materi"
+                  description="Ceritakan apakah materi tryout terasa relevan, jelas, dan sesuai dengan kebutuhan belajarmu."
+                  placeholder="Contoh: Materi sudah sesuai, tetapi ada beberapa topik yang menurut saya masih perlu diperbanyak..."
+                  defaultValue={defaultCommentsByAspect[LearningAspect.MATERI]}
                 />
-              ))}
-            </div>
+                <FeedbackTextareaField
+                  name="penyampaian"
+                  title="Penyampaian"
+                  description="Jelaskan bagaimana pengalamanmu saat memahami instruksi, alur pengerjaan, atau cara penyajian tryout."
+                  placeholder="Contoh: Alur pengerjaan cukup jelas, namun saya butuh penjelasan yang lebih ringkas di bagian awal..."
+                  defaultValue={defaultCommentsByAspect[LearningAspect.PENYAMPAIAN]}
+                />
+                <FeedbackTextareaField
+                  name="soal"
+                  title="Soal"
+                  description="Berikan tanggapan tentang kualitas soal, tingkat kesulitan, dan variasi pertanyaan yang kamu hadapi."
+                  placeholder="Contoh: Soal cukup menantang dan bervariasi, tetapi ada beberapa nomor yang menurut saya terlalu mirip..."
+                  defaultValue={defaultCommentsByAspect[LearningAspect.SOAL]}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <SubmitFeedbackButton />
+                <span className="text-sm text-slate-500">
+                  Setelah tersimpan, status tryout ini akan berubah menjadi tanggapan lengkap.
+                </span>
+              </div>
+            </form>
           )}
         </section>
+      </section>
+
+      <section className="rounded-[1.8rem] border border-white/80 bg-white p-5 shadow-[0_20px_48px_rgba(15,23,42,0.06)]">
+        <div className="border-b border-slate-200/80 pb-4">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">
+            Riwayat Tanggapan Terkirim
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Ringkasan semua aspek feedback yang sudah kamu kirim pada tryout-tryout sebelumnya.
+          </p>
+        </div>
+
+        {recentFeedbacks.length === 0 ? (
+          <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-6 text-sm leading-7 text-slate-500">
+            Belum ada tanggapan yang tersimpan.
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            {recentFeedbacks.map((feedbackItem) => (
+              <FeedbackHistoryCard
+                key={feedbackItem.id}
+                aspect={feedbackItem.aspect}
+                comment={feedbackItem.comment}
+                createdAt={feedbackItem.createdAt}
+                sentiment={feedbackItem.sentiment?.label ?? null}
+                subjectName={feedbackItem.subject.name}
+                title={feedbackItem.tryoutSession.tryout.title}
+                tryoutId={feedbackItem.tryoutSession.tryout.id}
+              />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
@@ -229,7 +370,7 @@ function FeedbackSummaryCard({
 }: {
   helper: string;
   label: string;
-  tone: "blue" | "emerald" | "orange";
+  tone: "blue" | "emerald" | "orange" | "violet";
   value: string;
 }) {
   const toneClass =
@@ -237,7 +378,9 @@ function FeedbackSummaryCard({
       ? "bg-orange-100 text-orange-700"
       : tone === "emerald"
         ? "bg-emerald-100 text-emerald-700"
-        : "bg-blue-100 text-blue-700";
+        : tone === "violet"
+          ? "bg-violet-100 text-violet-700"
+          : "bg-blue-100 text-blue-700";
 
   return (
     <div className="rounded-[1.6rem] border border-white/80 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
@@ -257,42 +400,100 @@ function FeedbackSummaryCard({
 }
 
 function PendingFeedbackTryoutCard({
+  completionCount,
+  isActive,
+  missingAspects,
+  selectedSessionId,
+  sessionId,
   subjectName,
   submittedAt,
   title,
   tryoutId,
 }: {
+  completionCount: number;
+  isActive: boolean;
+  missingAspects: LearningAspect[];
+  selectedSessionId: string | null;
+  sessionId: string;
   subjectName: string;
   submittedAt: Date | null;
   title: string;
   tryoutId: string;
 }) {
   return (
-    <article className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-[0_14px_34px_rgba(15,23,42,0.04)]">
+    <article
+      className={`rounded-[1.6rem] border p-5 shadow-[0_14px_34px_rgba(15,23,42,0.04)] transition ${
+        isActive
+          ? "border-blue-200 bg-blue-50/60"
+          : "border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]"
+      }`}
+    >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
           {subjectName}
         </span>
         <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">
-          Menunggu tanggapan
+          {completionCount}/{REQUIRED_FEEDBACK_ASPECT_COUNT} aspek
         </span>
       </div>
       <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">{title}</h3>
       <p className="mt-2 text-sm text-slate-500">
         Selesai dikerjakan {submittedAt ? formatDate(submittedAt) : "baru-baru ini"}.
       </p>
+      <p className="mt-3 text-sm leading-6 text-slate-600">
+        Aspek yang masih perlu diisi:{" "}
+        {missingAspects.map((aspect) => feedbackAspectLabelMap[aspect]).join(", ")}.
+      </p>
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Link
-          href={`/siswa/tryout/${tryoutId}`}
-          className="inline-flex h-11 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] transition hover:bg-blue-500"
+          href={`/siswa/tanggapan?session=${sessionId}#form-tanggapan`}
+          className={`inline-flex h-11 items-center rounded-full px-5 text-sm font-semibold transition ${
+            isActive
+              ? "bg-blue-600 text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] hover:bg-blue-500"
+              : "border border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+          }`}
         >
-          Buka Tryout
+          {selectedSessionId === sessionId ? "Sedang Dipilih" : "Isi Tanggapan"}
         </Link>
-        <span className="text-sm text-slate-500">
-          Lanjutkan dengan mengisi tanggapan belajar pada sesi tryout ini.
-        </span>
+        <Link
+          href={`/siswa/tryout/${tryoutId}`}
+          className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+        >
+          Lihat Detail
+        </Link>
       </div>
     </article>
+  );
+}
+
+function FeedbackTextareaField({
+  defaultValue,
+  description,
+  name,
+  placeholder,
+  title,
+}: {
+  defaultValue: string;
+  description: string;
+  name: string;
+  placeholder: string;
+  title: string;
+}) {
+  return (
+    <label className="grid gap-2 rounded-[1.4rem] border border-slate-200/80 bg-slate-50/60 p-4">
+      <div>
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
+        <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+      </div>
+      <textarea
+        name={name}
+        defaultValue={defaultValue}
+        rows={5}
+        required
+        placeholder={placeholder}
+        className="w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+      />
+    </label>
   );
 }
 
@@ -320,7 +521,7 @@ function FeedbackHistoryCard({
           {subjectName}
         </span>
         <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-          {aspectLabelMap[aspect]}
+          {feedbackAspectLabelMap[aspect]}
         </span>
         {sentiment ? (
           <span
@@ -353,12 +554,6 @@ function FeedbackHistoryCard({
   );
 }
 
-const aspectLabelMap: Record<LearningAspect, string> = {
-  [LearningAspect.MATERI]: "Materi",
-  [LearningAspect.PENYAMPAIAN]: "Penyampaian",
-  [LearningAspect.SOAL]: "Soal",
-};
-
 const sentimentLabelMap: Record<SentimentLabel, string> = {
   [SentimentLabel.POSITIF]: "Positif",
   [SentimentLabel.NEGATIF]: "Negatif",
@@ -387,6 +582,16 @@ function FeedbackMetricIcon() {
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatDateTime(date: Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
     month: "short",
     year: "numeric",
   }).format(date);
