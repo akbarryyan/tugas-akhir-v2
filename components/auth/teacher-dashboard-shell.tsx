@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AuthMethod } from "@prisma/client";
+import type { AuthMethod } from "@prisma/client";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
@@ -13,39 +20,27 @@ type TeacherDashboardShellProps = {
   user: {
     authMethod: AuthMethod;
     email?: string | null;
+    image?: string | null;
     name?: string | null;
   };
 };
 
 const navigationItems = [
-  {
-    href: "/guru",
-    label: "Beranda",
-    helper: "Ringkasan area kerja guru.",
-  },
-  {
-    href: "/guru/soal",
-    label: "Kelola Soal",
-    helper: "Kelola soal mentah per mapel.",
-  },
-  {
-    href: "/guru/bank-soal",
-    label: "Bank Soal",
-    helper: "Susun koleksi soal siap pakai.",
-  },
-  {
-    href: "/guru/tryout",
-    label: "Tryout",
-    helper: "Susun dan kelola paket tryout.",
-  },
+  { href: "/guru", label: "Beranda", icon: HomeIcon },
+  { href: "/guru/soal", label: "Kelola Soal", icon: QuestionIcon },
+  { href: "/guru/bank-soal", label: "Bank Soal", icon: BankSoalIcon },
+  { href: "/guru/tryout", label: "Tryout", icon: ClipboardIcon },
 ];
 
 const pageTitleByPath: Record<string, string> = {
   "/guru": "Beranda Guru",
   "/guru/soal": "Kelola Soal",
-  "/guru/bank-soal": "Pengelolaan Bank Soal",
-  "/guru/tryout": "Pengelolaan Tryout",
+  "/guru/bank-soal": "Bank Soal",
+  "/guru/profile": "Profil Guru",
+  "/guru/tryout": "Tryout",
 };
+
+const STORAGE_KEY = "teacher-sidebar-collapsed";
 
 export function TeacherDashboardShell({
   children,
@@ -53,180 +48,445 @@ export function TeacherDashboardShell({
   user,
 }: TeacherDashboardShellProps) {
   const pathname = usePathname();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const teacherName = user.name ?? "Guru";
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
 
-  const currentPageTitle = pathname.startsWith("/guru/tryout/")
+    return window.localStorage.getItem(STORAGE_KEY) === "true";
+  });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement | null>(null);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const displayName = user.name ?? "Guru";
+  const displayEmail = user.email ?? "Akun guru aktif";
+  const isCompactSidebar = isDesktopViewport && isSidebarCollapsed;
+  const sidebarWidth = isCompactSidebar ? "96px" : "220px";
+  const currentTitle = pathname.startsWith("/guru/tryout/")
     ? "Detail Tryout Guru"
-    : pathname.startsWith("/guru/bank-soal")
-      ? "Pengelolaan Bank Soal"
-    : pathname.startsWith("/guru/soal")
-      ? "Kelola Soal"
-    : (pageTitleByPath[pathname] ?? "Area Guru");
+    : pathname.startsWith("/guru/bank-soal/")
+      ? "Detail Bank Soal"
+      : pageTitleByPath[pathname] ?? "Panel Guru";
+  const isDashboardHome = pathname === "/guru";
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    const syncViewport = () => {
+      const isDesktop = window.innerWidth >= 1024;
+
+      setIsDesktopViewport(isDesktop);
+
+      if (isDesktop) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow =
+      isSidebarOpen && !isDesktopViewport ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isSidebarOpen, isDesktopViewport]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isNotificationOpen && !isUserMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        isNotificationOpen &&
+        !notificationRef.current?.contains(event.target as Node)
+      ) {
+        setIsNotificationOpen(false);
+      }
+
+      if (
+        isUserMenuOpen &&
+        !userMenuRef.current?.contains(event.target as Node)
+      ) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsNotificationOpen(false);
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isNotificationOpen, isUserMenuOpen]);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.14),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.08),_transparent_22%),linear-gradient(180deg,#f7fafc_0%,#eef4ff_44%,#f8fafc_100%)] text-slate-900">
+    <div className="min-h-screen bg-[#f5f7fb] text-slate-900">
       {isSidebarOpen ? (
         <button
           type="button"
-          aria-label="Tutup menu guru"
+          aria-label="Tutup navigasi guru"
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-50 animate-[teacherOverlayFade_280ms_cubic-bezier(0.22,1,0.36,1)] bg-slate-950/28 backdrop-blur-[2px] lg:hidden"
         />
       ) : null}
 
-      <div className="mx-auto flex min-h-screen w-full max-w-[1520px] gap-4 overflow-x-clip px-3 py-3 sm:px-5 sm:py-4 lg:grid lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-6 lg:px-6 lg:py-6">
+      <div
+        className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-4 overflow-x-clip px-3 py-3 transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-4 sm:py-4 lg:grid lg:gap-0 lg:px-0 lg:py-0 lg:[grid-template-columns:var(--sidebar-width)_minmax(0,1fr)]"
+        style={{ "--sidebar-width": sidebarWidth } as CSSProperties}
+      >
         <aside
-          className={`fixed inset-y-3 left-3 z-50 w-[min(325px,calc(100vw-1.5rem))] overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,#0f172a_0%,#0b1222_44%,#111827_100%)] text-white shadow-[0_28px_72px_rgba(15,23,42,0.36)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-6 lg:z-auto lg:h-[calc(100vh-3rem)] lg:w-auto lg:translate-x-0 ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-[108%] lg:translate-x-0"
+          className={`fixed inset-y-0 left-0 z-[60] w-[min(82vw,300px)] transform-gpu overflow-hidden border-r border-slate-200/80 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.16)] will-change-transform transition-[transform,box-shadow] duration-[560ms] ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:inset-y-auto lg:top-0 lg:z-auto lg:h-screen lg:w-auto lg:translate-x-0 lg:shadow-none ${
+            isSidebarOpen
+              ? "translate-x-0"
+              : "pointer-events-none -translate-x-full lg:pointer-events-auto"
           }`}
         >
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="border-b border-white/10 px-5 pb-5 pt-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-4">
-                  <span className="inline-flex rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-200">
-                    Ruang Guru
-                  </span>
-                  <div className="space-y-2">
-                    <h1 className="text-2xl font-semibold tracking-tight text-white">
-                      {teacherName}
-                    </h1>
-                    <p className="text-sm leading-6 text-slate-300">{description}</p>
-                  </div>
+          <div
+            className={`flex h-full min-h-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#fbfcff_100%)] transition-[transform,opacity] duration-[620ms] ease-[cubic-bezier(0.22,1,0.36,1)] lg:translate-x-0 lg:opacity-100 ${
+              isSidebarOpen
+                ? "translate-x-0 opacity-100 delay-75"
+                : "-translate-x-5 opacity-90 delay-0"
+            }`}
+          >
+            <div
+              className={`pb-3 pt-4 transition-[padding] duration-200 ease-out ${
+                isCompactSidebar ? "lg:px-4" : "px-5 sm:px-6"
+              }`}
+            >
+              <div className="mb-4 flex justify-center lg:hidden">
+                <div className="h-1.5 w-14 rounded-full bg-slate-200" />
+              </div>
+
+              <div className="relative flex items-center justify-center">
+                <div className="inline-flex h-10 w-10 items-center justify-center text-blue-700">
+                  <TeacherBadgeIcon />
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsSidebarOpen(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-slate-300 transition hover:bg-white/10 hover:text-white lg:hidden"
+                  className="absolute right-0 inline-flex h-10 w-10 items-center justify-center rounded-[0.9rem] border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700 lg:hidden"
                 >
                   <CloseIcon />
                 </button>
               </div>
-
-              <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">
-                  Identitas Akses
-                </p>
-                <p className="mt-2 text-sm font-semibold text-white">
-                  {user.authMethod === AuthMethod.EMAIL_PASSWORD
-                    ? "Akun Guru"
-                    : "Akses Portal"}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-slate-300">
-                  {user.email ?? "Akun guru aktif pada portal pembelajaran."}
-                </p>
-              </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col px-4 py-4">
-              <p className="px-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Navigasi Guru
-              </p>
+            <div
+              className={`flex min-h-0 flex-1 flex-col py-4 ${
+                isCompactSidebar ? "lg:px-3" : "px-4"
+              }`}
+            >
+              <div
+                className={`px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300 ${
+                  isCompactSidebar ? "lg:text-center" : ""
+                }`}
+              >
+                {isCompactSidebar ? "Menu" : "Menu Utama"}
+              </div>
 
-              <nav className="no-scrollbar mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
-                <div className="grid gap-2.5">
+              <nav className="no-scrollbar mt-3 min-h-0 flex-1 overflow-y-auto pb-4 pr-1">
+                <div className="grid gap-1.5">
                   {navigationItems.map((item) => {
+                    const Icon = item.icon;
                     const isActive =
-                      item.href === "/guru"
-                        ? pathname === "/guru"
-                        : pathname.startsWith(item.href);
+                      pathname === item.href ||
+                      (item.href !== "/guru" && pathname.startsWith(item.href));
 
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setIsSidebarOpen(false)}
-                        className={`group rounded-[1.45rem] border px-4 py-3 transition ${
-                          isActive
-                            ? "border-sky-400/20 bg-[linear-gradient(135deg,rgba(59,130,246,0.22),rgba(14,165,233,0.14))] text-white shadow-[0_14px_30px_rgba(14,165,233,0.15)]"
-                            : "border-transparent bg-transparent text-slate-300 hover:border-white/10 hover:bg-white/6 hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
+                      <div key={item.href} className="group relative">
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsSidebarOpen(false)}
+                          title={item.label}
+                          className={`flex min-w-0 items-center rounded-[0.95rem] transition-all duration-200 ${
+                            isCompactSidebar
+                              ? "justify-center px-0 py-3"
+                              : "gap-2.5 px-3 py-2.5"
+                          } ${
+                            isActive
+                              ? "bg-[#eef2ff] text-blue-700"
+                              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                          }`}
+                        >
                           <span
-                            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.8rem] ${
                               isActive
-                                ? "bg-white/14 text-sky-100"
-                                : "bg-white/6 text-slate-300 group-hover:bg-white/10 group-hover:text-white"
+                                ? "bg-blue-100 text-blue-700"
+                                : "text-slate-400"
                             }`}
                           >
-                            {item.href === "/guru" ? (
-                              <TeacherHomeIcon />
-                            ) : item.href === "/guru/soal" ? (
-                              <TeacherQuestionIcon />
-                            ) : item.href === "/guru/bank-soal" ? (
-                              <TeacherBankIcon />
-                            ) : (
-                              <TeacherTryoutIcon />
-                            )}
+                            <Icon />
                           </span>
-                          <span className="min-w-0">
-                            <span className="block text-sm font-semibold">{item.label}</span>
-                            <span className="mt-1 block text-xs leading-5 text-slate-400">
-                              {item.helper}
+                          <span
+                            className={`min-w-0 transition-[max-width,opacity] duration-200 ${
+                              isCompactSidebar
+                                ? "lg:max-w-0 lg:overflow-hidden lg:opacity-0"
+                                : "max-w-[180px] opacity-100"
+                            }`}
+                          >
+                            <span className="block text-sm font-medium">
+                              {item.label}
                             </span>
                           </span>
-                        </div>
-                      </Link>
+                        </Link>
+
+                        {isCompactSidebar ? (
+                          <div className="pointer-events-none absolute left-[calc(100%+0.75rem)] top-1/2 hidden -translate-y-1/2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 opacity-0 shadow-[0_18px_44px_rgba(15,23,42,0.14)] transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+                            {item.label}
+                          </div>
+                        ) : null}
+                      </div>
                     );
                   })}
                 </div>
               </nav>
             </div>
 
-            <div className="border-t border-white/10 px-4 py-4">
+            <div className="shrink-0 border-t border-slate-200/80 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4">
+              <p
+                className={`mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300 ${
+                  isCompactSidebar ? "lg:text-center lg:opacity-0" : ""
+                }`}
+              >
+                Lainnya
+              </p>
               <SignOutButton
-                className="w-full rounded-full border border-white/10 bg-white/8 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-60"
-                confirmTitle="Keluar dari Area Guru"
+                className={`w-full rounded-[0.95rem] border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  isCompactSidebar ? "lg:px-0" : "px-4"
+                }`}
+                confirmTitle="Keluar dari Panel Guru"
                 pendingLabel="Keluar..."
               />
             </div>
           </div>
         </aside>
 
-        <div className="min-w-0">
-          <div className="sticky top-0 z-30 isolate pb-3 pt-3 lg:pb-4 lg:pt-6">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-3 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.14),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.08),_transparent_22%),linear-gradient(180deg,#f7fafc_0%,#eef4ff_44%,#f8fafc_100%)] lg:h-6" />
-            <header className="relative rounded-[1.8rem] border border-white/90 bg-white px-4 py-4 shadow-[0_18px_52px_rgba(15,23,42,0.08)] sm:px-5 sm:py-5">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <div className="min-w-0 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsSidebarOpen(true)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:border-sky-200 hover:text-sky-700 lg:hidden"
-                    >
-                      <MenuIcon />
-                    </button>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-700 sm:text-xs">
-                      Panel Guru
-                    </p>
-                  </div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
-                    {currentPageTitle}
+        <div className="min-w-0 lg:px-5 lg:py-5">
+          <div className="pb-4 sm:pb-5 lg:pb-5">
+            <header
+              className={`rounded-[1.05rem] border border-slate-200/80 bg-white px-4 transition-[padding,box-shadow] duration-300 sm:px-5 ${
+                isScrolled
+                  ? "py-2.5 shadow-[0_12px_24px_rgba(15,23,42,0.07)]"
+                  : "py-3 shadow-[0_8px_20px_rgba(15,23,42,0.05)]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isDesktopViewport) {
+                        setIsSidebarOpen(false);
+                        setIsSidebarCollapsed((current) => !current);
+                        return;
+                      }
+
+                      setIsSidebarOpen(true);
+                    }}
+                    title={isSidebarCollapsed ? "Buka sidebar" : "Tutup sidebar"}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-[0.8rem] border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                  >
+                    <span className="transition-transform duration-300">
+                      {isSidebarCollapsed ? <ExpandIcon /> : <CollapseIcon />}
+                    </span>
+                  </button>
+                  <h2 className="hidden min-w-0 truncate text-[1.12rem] font-semibold leading-tight tracking-tight text-slate-950 sm:block sm:text-[1.18rem]">
+                    {currentTitle}
                   </h2>
-                  <p className="max-w-3xl text-sm leading-6 text-slate-600">
-                    Kelola perangkat evaluasi pembelajaran, susun tryout dengan lebih tertata, dan pantau progres yang relevan dengan mata pelajaran yang Anda ampu.
-                  </p>
                 </div>
 
-                <div className="flex w-full flex-wrap items-center gap-3 xl:w-auto xl:justify-end">
-                  <div className="rounded-full bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700">
-                    Fokus akademik
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div ref={notificationRef} className="relative">
+                    <button
+                      type="button"
+                      aria-expanded={isNotificationOpen}
+                      aria-haspopup="dialog"
+                      onClick={() => {
+                        setIsNotificationOpen((current) => !current);
+                        setIsUserMenuOpen(false);
+                      }}
+                      className={`relative inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white transition ${
+                        isNotificationOpen
+                          ? "border-blue-200 bg-blue-50 text-blue-600"
+                          : "border-slate-200 text-blue-400 hover:border-slate-300 hover:text-blue-600"
+                      }`}
+                    >
+                      <BellIcon />
+                      <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-rose-500" />
+                    </button>
+
+                    <div
+                      role="dialog"
+                      aria-label="Notifikasi guru"
+                      className={`absolute right-0 top-[calc(100%+0.7rem)] z-50 w-[min(20rem,calc(100vw-2rem))] origin-top-right rounded-[1.05rem] border border-slate-200 bg-white p-2 shadow-[0_22px_50px_rgba(15,23,42,0.14)] transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                        isNotificationOpen
+                          ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+                          : "pointer-events-none -translate-y-1 scale-95 opacity-0"
+                      }`}
+                    >
+                      <div className="rounded-[0.9rem] bg-slate-50 px-3 py-3">
+                        <p className="text-sm font-semibold text-slate-900">
+                          Notifikasi
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          Ringkasan pembaruan area guru dan aktivitas perangkat evaluasi.
+                        </p>
+                      </div>
+
+                      <div className="mt-2 grid gap-1">
+                        <NotificationItem
+                          title="Area guru siap digunakan"
+                          description="Silakan lanjutkan kelola soal, bank soal, atau tryout terbaru Anda."
+                        />
+                        <NotificationItem
+                          title="Tinjau bank soal aktif"
+                          description="Pastikan susunan soal sudah sesuai sebelum dipakai pada tryout berikutnya."
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">
-                    Susun evaluasi yang siap dipakai
+
+                  <div ref={userMenuRef} className="relative">
+                    <button
+                      type="button"
+                      aria-expanded={isUserMenuOpen}
+                      aria-haspopup="menu"
+                      onClick={() => {
+                        setIsUserMenuOpen((current) => !current);
+                        setIsNotificationOpen(false);
+                      }}
+                      className={`flex items-center gap-1 rounded-full border border-transparent py-0.5 pl-0.5 pr-1 transition ${
+                        isUserMenuOpen
+                          ? "border-slate-200 bg-slate-50"
+                          : "hover:border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <TeacherHeaderAvatar
+                        image={user.image}
+                        initial={displayName.slice(0, 1).toUpperCase()}
+                        sizeClassName="h-8 w-8 text-[11px]"
+                      />
+                      <span
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition ${
+                          isUserMenuOpen ? "rotate-180 text-slate-600" : ""
+                        }`}
+                      >
+                        <ChevronDownIcon />
+                      </span>
+                    </button>
+
+                    <div
+                      role="menu"
+                      className={`absolute right-0 top-[calc(100%+0.65rem)] z-50 w-64 origin-top-right rounded-[1.05rem] border border-slate-200 bg-white p-2 shadow-[0_22px_50px_rgba(15,23,42,0.14)] transition-all duration-200 ease-out ${
+                        isUserMenuOpen
+                          ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+                          : "pointer-events-none -translate-y-1 scale-95 opacity-0"
+                      }`}
+                    >
+                      <div className="rounded-[0.9rem] bg-slate-50 px-3 py-3">
+                        <div className="flex items-center gap-3">
+                          <TeacherHeaderAvatar
+                            image={user.image}
+                            initial={displayName.slice(0, 1).toUpperCase()}
+                            sizeClassName="h-10 w-10 text-sm"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">
+                              {displayName}
+                            </p>
+                            <p className="truncate text-xs text-slate-500">
+                              {displayEmail}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 grid gap-1">
+                        <Link
+                          href="/guru/profile"
+                          role="menuitem"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2 rounded-[0.85rem] px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+                        >
+                          <UserIcon />
+                          Profil Guru
+                        </Link>
+                        <SignOutButton
+                          className="flex w-full items-center gap-2 rounded-[0.85rem] px-3 py-2 text-left text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                          confirmTitle="Keluar dari Panel Guru"
+                          pendingLabel={
+                            <span className="inline-flex items-center gap-2">
+                              <SmallSpinnerIcon />
+                              Keluar...
+                            </span>
+                          }
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </header>
           </div>
 
-          <main className="min-w-0 overflow-x-clip pb-4 pt-4 lg:pt-4">{children}</main>
+          <main
+            aria-label={currentTitle}
+            className={`relative min-w-0 overflow-x-clip pb-6 ${
+              isDashboardHome ? "pt-1" : "pt-2"
+            }`}
+          >
+            {children}
+          </main>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes teacherOverlayFade {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -243,12 +503,124 @@ function iconProps() {
   };
 }
 
-function MenuIcon() {
+function TeacherHeaderAvatar({
+  image,
+  initial,
+  sizeClassName,
+}: {
+  image?: string | null;
+  initial: string;
+  sizeClassName: string;
+}) {
+  if (image) {
+    return (
+      <Image
+        src={image}
+        alt="Foto profil guru"
+        width={40}
+        height={40}
+        className={`${sizeClassName} shrink-0 rounded-full object-cover ring-2 ring-blue-100`}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={`${sizeClassName} flex shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#60a5fa_0%,#2563eb_58%,#38bdf8_100%)] font-semibold text-white`}
+    >
+      {initial}
+    </span>
+  );
+}
+
+function NotificationItem({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <div className="rounded-[0.85rem] px-3 py-2.5 transition hover:bg-slate-50">
+      <div className="flex gap-3">
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-800">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeIcon() {
   return (
     <svg aria-hidden="true" {...iconProps()}>
-      <path d="M4 7h16" />
-      <path d="M4 12h16" />
-      <path d="M4 17h16" />
+      <path d="M4 10.5 12 4l8 6.5" />
+      <path d="M6.5 9.5V20h11V9.5" />
+      <path d="M10 20v-5h4v5" />
+    </svg>
+  );
+}
+
+function QuestionIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M12 18h.01" />
+      <path d="M9.1 9a3 3 0 1 1 5.8 1c-.5 1.2-1.9 1.7-2.4 2.6-.2.4-.3.7-.3 1.4" />
+      <path d="M4 4h16v16H4z" />
+    </svg>
+  );
+}
+
+function BankSoalIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M4 7.5 12 4l8 3.5L12 11z" />
+      <path d="M4 12.5 12 16l8-3.5" />
+      <path d="M4 17.5 12 21l8-3.5" />
+      <path d="M4 7.5v10" />
+      <path d="M20 7.5v10" />
+    </svg>
+  );
+}
+
+function ClipboardIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M9 5.5h6" />
+      <path d="M9.5 3.5h5A1.5 1.5 0 0 1 16 5v1H8V5A1.5 1.5 0 0 1 9.5 3.5Z" />
+      <path d="M7 6.5h10A1.5 1.5 0 0 1 18.5 8v11A1.5 1.5 0 0 1 17 20.5H7A1.5 1.5 0 0 1 5.5 19V8A1.5 1.5 0 0 1 7 6.5Z" />
+      <path d="M8.5 11h7" />
+      <path d="M8.5 15h5" />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M15.5 17.5h-7" />
+      <path d="M18 17.5H6l1.4-2.1V11a4.6 4.6 0 0 1 9.2 0v4.4L18 17.5Z" />
+      <path d="M10 20a2.2 2.2 0 0 0 4 0" />
+      <path d="M12 5.2V3.8" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()} className="h-4 w-4">
+      <path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+      <path d="M5 19.5c1.2-2.5 3.8-4 7-4s5.8 1.5 7 4" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="m7 10 5 5 5-5" />
     </svg>
   );
 }
@@ -262,48 +634,53 @@ function CloseIcon() {
   );
 }
 
-function TeacherHomeIcon() {
+function CollapseIcon() {
   return (
     <svg aria-hidden="true" {...iconProps()}>
-      <path d="M4 10.5 12 4l8 6.5" />
-      <path d="M6.5 9.5v9h11v-9" />
-      <path d="M10 18.5v-5h4v5" />
+      <path d="M15 5 9 12l6 7" />
     </svg>
   );
 }
 
-function TeacherTryoutIcon() {
+function ExpandIcon() {
   return (
     <svg aria-hidden="true" {...iconProps()}>
-      <path d="M8 5.5h8" />
-      <path d="M8 9.5h8" />
-      <path d="M8 13.5h5" />
-      <path d="M5.5 5.5h.01" />
-      <path d="M5.5 9.5h.01" />
-      <path d="M5.5 13.5h.01" />
-      <path d="M4 3.5h16v17H4z" />
+      <path d="m9 5 6 7-6 7" />
     </svg>
   );
 }
 
-function TeacherQuestionIcon() {
+function TeacherBadgeIcon() {
   return (
     <svg aria-hidden="true" {...iconProps()}>
-      <path d="M12 18h.01" />
-      <path d="M9.1 9a3 3 0 1 1 5.8 1c-.5 1.2-1.9 1.7-2.4 2.6-.2.4-.3.7-.3 1.4" />
-      <path d="M4 4h16v16H4z" />
+      <path d="M4 7.5 12 4l8 3.5-8 3.5-8-3.5Z" />
+      <path d="M7 10.5V14c0 1.7 2.2 3 5 3s5-1.3 5-3v-3.5" />
+      <path d="M20 8v6" />
     </svg>
   );
 }
 
-function TeacherBankIcon() {
+function SmallSpinnerIcon() {
   return (
-    <svg aria-hidden="true" {...iconProps()}>
-      <path d="M4 7.5 12 4l8 3.5L12 11z" />
-      <path d="M4 12.5 12 16l8-3.5" />
-      <path d="M4 17.5 12 21l8-3.5" />
-      <path d="M4 7.5v10" />
-      <path d="M20 7.5v10" />
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 animate-spin"
+      fill="none"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        className="stroke-current/25"
+        strokeWidth="2.5"
+      />
+      <path
+        d="M21 12a9 9 0 0 0-9-9"
+        className="stroke-current"
+        strokeLinecap="round"
+        strokeWidth="2.5"
+      />
     </svg>
   );
 }

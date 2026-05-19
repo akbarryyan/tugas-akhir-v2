@@ -1,5 +1,11 @@
 import Link from "next/link";
 
+import {
+  AdminLinkCard,
+  AdminStatCard,
+  PageIntro,
+  SectionCard,
+} from "@/app/admin/_components";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
@@ -124,56 +130,60 @@ export default async function GuruPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/80 bg-[linear-gradient(135deg,#ffffff_0%,#eef4ff_42%,#f8fbff_100%)] p-6 shadow-[0_20px_56px_rgba(15,23,42,0.06)] sm:p-7">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
-          Ruang Kerja Guru
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
-          Kelola evaluasi belajar sesuai mata pelajaran yang Anda ampu.
-        </h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600">
-          Area guru difokuskan untuk penyusunan bank soal, penyusunan paket tryout,
-          serta peninjauan hasil siswa dan tanggapan pembelajaran. Modul tryout
-          menjadi pusat kerja utama karena paket evaluasi sebaiknya disusun oleh guru
-          yang memahami mapel dan tingkat kesulitan soal.
-        </p>
-      </section>
+      <PageIntro
+        eyebrow="Panel Guru"
+        title="Beranda Guru"
+        description="Kelola evaluasi belajar sesuai mata pelajaran yang Anda ampu, mulai dari soal mentah, bank soal, hingga paket tryout yang siap dipublikasikan untuk siswa."
+      />
 
       <section className="grid gap-4 md:grid-cols-3">
-        <MetricCard
+        <AdminStatCard
+          accent="sky"
           label="Mapel Diampu"
           value={teacherProfile?.subjectTeachers.length ?? 0}
           description="Mata pelajaran yang menjadi ruang kerja guru di sistem."
         />
-        <MetricCard
+        <AdminStatCard
+          accent="indigo"
           label="Soal Aktif"
           value={questionCount}
           description="Soal mentah aktif yang siap dimasukkan ke bank soal."
         />
-        <MetricCard
+        <AdminStatCard
+          accent="emerald"
           label="Bank Soal"
           value={bankSoalCount}
           description="Koleksi soal yang siap dipakai sebagai dasar penyusunan tryout."
         />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-        <div className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Ringkasan Operasional
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">
-                Pantau progres tryout dan aktivitas evaluasi
-              </h2>
-            </div>
-            <p className="text-sm text-slate-500">
-              Gunakan ringkasan ini untuk melihat kesiapan paket tryout yang sudah Anda susun.
-            </p>
-          </div>
+      <section className="grid gap-4 xl:grid-cols-3">
+        <AdminLinkCard
+          href="/guru/soal"
+          title="Kelola Soal"
+          metric={`${questionCount} soal aktif`}
+          description="Susun soal mentah per mata pelajaran sebelum dimasukkan ke bank soal dan tryout."
+        />
+        <AdminLinkCard
+          href="/guru/bank-soal"
+          title="Bank Soal"
+          metric={`${bankSoalCount} koleksi`}
+          description="Kumpulkan soal-soal siap pakai menjadi bank soal yang lebih terstruktur."
+        />
+        <AdminLinkCard
+          href="/guru/tryout"
+          title="Tryout"
+          metric={`${publishedTryoutCount} publik`}
+          description="Bangun paket tryout dari bank soal, atur status draft, lalu publikasikan saat siap."
+        />
+      </section>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+      <section className="grid gap-4 xl:grid-cols-[1.12fr_0.88fr]">
+        <SectionCard
+          title="Ringkasan Operasional"
+          description="Pantau progres tryout, kesiapan soal, dan aktivitas evaluasi terbaru dari area guru."
+        >
+          <div className="grid gap-4 md:grid-cols-2">
             <FeatureCard
               accent="sky"
               title={`${publishedTryoutCount} tryout dipublikasikan`}
@@ -182,7 +192,7 @@ export default async function GuruPage() {
             <FeatureCard
               accent="emerald"
               title={`${draftTryoutCount} tryout masih draft`}
-              description="Paket yang masih bisa Anda rapikan setelah memilih bank soal yang tepat."
+              description="Paket yang masih bisa Anda rapikan sebelum dipublikasikan."
             />
             <FeatureCard
               accent="amber"
@@ -203,68 +213,61 @@ export default async function GuruPage() {
               }
             />
           </div>
-        </div>
+        </SectionCard>
 
-        <div className="space-y-4">
-          <div className="rounded-[2rem] border border-sky-100 bg-[linear-gradient(180deg,#ffffff_0%,#f2f9ff_100%)] p-6 shadow-[0_18px_48px_rgba(14,116,144,0.08)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
-              Modul Prioritas
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-slate-950">
-              Kelola soal dan tryout dari satu area
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600">
-              Mulailah dari kelola soal untuk menyiapkan soal mentah, susun ke dalam bank soal, lalu bangun paket tryout dari koleksi itu.
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-3">
+        <div className="grid gap-4">
+          <SectionCard
+            title="Modul Prioritas"
+            description="Mulailah dari kelola soal, susun bank soal, lalu bentuk paket tryout yang siap dipakai."
+          >
+            <div className="flex flex-wrap gap-3">
               {(teacherProfile?.subjectTeachers ?? []).slice(0, 4).map((item) => (
                 <span
                   key={item.subject.name}
-                  className="rounded-full bg-white px-3 py-1 text-sm font-medium text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,0.05)]"
+                  className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700"
                 >
                   {item.subject.name}
                 </span>
               ))}
               {(teacherProfile?.subjectTeachers.length ?? 0) === 0 ? (
-                <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-500">
                   Belum ada mapel ampuan
                 </span>
               ) : null}
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href="/guru/soal"
-                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-200 hover:text-sky-700"
+                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700"
               >
                 Kelola Soal
               </Link>
               <Link
                 href="/guru/bank-soal"
-                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-200 hover:text-sky-700"
+                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700"
               >
                 Bank Soal
               </Link>
               <Link
                 href="/guru/tryout"
-                className="inline-flex items-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="inline-flex items-center rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
               >
                 Buka Modul Tryout
               </Link>
             </div>
-          </div>
+          </SectionCard>
 
-          <div className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Tryout Terbaru
-            </p>
+          <SectionCard
+            title="Tryout Terbaru"
+            description="Pantau paket tryout terakhir yang Anda susun dan lihat status kerjanya dengan cepat."
+          >
             {latestTryouts.length === 0 ? (
-              <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/80 px-4 py-4 text-sm leading-6 text-slate-500">
+              <div className="rounded-[1rem] border border-dashed border-slate-200 bg-slate-50/80 px-4 py-4 text-sm leading-6 text-slate-500">
                 Belum ada tryout yang dibuat. Mulailah dari menyusun paket tryout pertama untuk mata pelajaran yang Anda ampu.
               </div>
             ) : (
-              <div className="mt-5 space-y-4">
+              <div className="space-y-4">
                 {latestTryouts.map((tryout, index) => (
                   <TeacherStep
                     key={tryout.id}
@@ -275,29 +278,9 @@ export default async function GuruPage() {
                 ))}
               </div>
             )}
-          </div>
+          </SectionCard>
         </div>
       </section>
-    </div>
-  );
-}
-
-function MetricCard({
-  description,
-  label,
-  value,
-}: {
-  description: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-[1.7rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
     </div>
   );
 }

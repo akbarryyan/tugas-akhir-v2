@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import {
+  AdminStatCard,
   AdminEmptyState,
   PageIntro,
   SectionCard,
@@ -116,17 +117,20 @@ export default async function GuruBankSoalPage({
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
 
       <section className="grid gap-4 md:grid-cols-3">
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="sky"
           label="Mapel Diampu"
           value={subjectOptions.length}
           description="Mapel yang dapat Anda susun menjadi bank soal."
         />
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="indigo"
           label="Bank Soal"
           value={bankSoals.length}
           description="Koleksi soal yang sudah Anda buat di sistem."
         />
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="emerald"
           label="Tryout Terkait"
           value={bankSoals.reduce((total, item) => total + item._count.tryouts, 0)}
           description="Jumlah tryout yang sudah menggunakan bank soal Anda."
@@ -209,7 +213,7 @@ export default async function GuruBankSoalPage({
                 idleLabel="Simpan Bank Soal"
                 pendingLabel="Menyimpan..."
                 loadingMessage="Menyimpan bank soal..."
-                className="h-11 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <ConfirmResetFormButton />
             </div>
@@ -275,7 +279,7 @@ export default async function GuruBankSoalPage({
         <div className="mt-6">
           <Link
             href="/guru/tryout"
-            className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-sky-200 hover:text-sky-700"
+            className="inline-flex h-11 items-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700"
           >
             Lanjut ke Modul Tryout
           </Link>
@@ -285,25 +289,6 @@ export default async function GuruBankSoalPage({
   );
 }
 
-function TeacherMetricCard({
-  description,
-  label,
-  value,
-}: {
-  description: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-[1.7rem] border border-white/70 bg-white/88 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
-    </div>
-  );
-}
 
 function QuestionPicker({
   selectedQuestionIds = [],

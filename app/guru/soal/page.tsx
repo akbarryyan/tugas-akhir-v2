@@ -1,6 +1,7 @@
 import { AnswerOption } from "@prisma/client";
 
 import {
+  AdminStatCard,
   AdminEmptyState,
   PageIntro,
   SectionCard,
@@ -102,17 +103,20 @@ export default async function GuruSoalPage({ searchParams }: GuruSoalPageProps) 
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
 
       <section className="grid gap-4 md:grid-cols-3">
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="sky"
           label="Mapel Diampu"
           value={subjectOptions.length}
           description="Mata pelajaran yang bisa Anda isi dengan soal mentah."
         />
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="emerald"
           label="Soal Aktif"
           value={activeQuestionCount}
           description="Soal yang sudah siap dimasukkan ke bank soal."
         />
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="indigo"
           label="Total Soal"
           value={questions.length}
           description="Seluruh soal yang pernah Anda susun di sistem."
@@ -208,7 +212,7 @@ export default async function GuruSoalPage({ searchParams }: GuruSoalPageProps) 
                 idleLabel="Simpan Soal"
                 pendingLabel="Menyimpan..."
                 loadingMessage="Menyimpan bank soal..."
-                className="h-11 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <ConfirmResetFormButton />
             </div>
@@ -381,7 +385,7 @@ export default async function GuruSoalPage({ searchParams }: GuruSoalPageProps) 
                       idleLabel="Perbarui Soal"
                       pendingLabel="Menyimpan..."
                       loadingMessage="Memperbarui bank soal..."
-                      className="h-11 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-11 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </div>
                 </form>
@@ -390,26 +394,6 @@ export default async function GuruSoalPage({ searchParams }: GuruSoalPageProps) 
           </div>
         )}
       </SectionCard>
-    </div>
-  );
-}
-
-function TeacherMetricCard({
-  description,
-  label,
-  value,
-}: {
-  description: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-[1.7rem] border border-white/70 bg-white/88 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import {
 } from "@/app/guru/tryout/_actions";
 import Link from "next/link";
 import {
+  AdminStatCard,
   AdminEmptyState,
   PageIntro,
   SectionCard,
@@ -144,17 +145,20 @@ export default async function GuruTryoutPage({
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
 
       <section className="grid gap-4 md:grid-cols-3">
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="sky"
           label="Mapel Diampu"
           value={subjectOptions.length}
           description="Mata pelajaran yang menjadi dasar penyusunan bank soal dan tryout."
         />
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="indigo"
           label="Bank Soal"
           value={bankSoalOptions.length}
           description="Bank soal yang siap dijadikan sumber penyusunan tryout."
         />
-        <TeacherMetricCard
+        <AdminStatCard
+          accent="emerald"
           label="Tryout Disusun"
           value={tryouts.length}
           description="Paket tryout yang telah Anda buat pada sistem."
@@ -249,7 +253,7 @@ export default async function GuruTryoutPage({
                 idleLabel="Simpan Tryout"
                 pendingLabel="Menyimpan..."
                 loadingMessage="Menyimpan paket tryout..."
-                className="h-11 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <ConfirmResetFormButton />
             </div>
@@ -386,26 +390,6 @@ function QuestionPicker({
           )}
         </div>
       ))}
-    </div>
-  );
-}
-
-function TeacherMetricCard({
-  description,
-  label,
-  value,
-}: {
-  description: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-[1.7rem] border border-white/70 bg-white/88 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
     </div>
   );
 }
