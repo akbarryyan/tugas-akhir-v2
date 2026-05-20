@@ -42,6 +42,16 @@ enum SentimentLabel {
   NETRAL
 }
 
+enum LabelSource {
+  AUTO
+  MANUAL
+}
+
+enum AutoMethod {
+  LEXICON
+  NAIVE_BAYES
+}
+
 model User {
   id             String          @id @default(cuid())
   name           String
@@ -52,6 +62,7 @@ model User {
   authMethod     AuthMethod
   teacherProfile TeacherProfile?
   studentProfile StudentProfile?
+  reviewedSentiments SentimentAnalysis[] @relation("SentimentReviewedByUser")
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -266,12 +277,25 @@ model Feedback {
 model SentimentAnalysis {
   id               String         @id @default(cuid())
   feedbackId       String         @unique
-  label            SentimentLabel
-  confidence       Decimal?       @db.Decimal(5, 4)
+  autoLabel        SentimentLabel
+  autoConfidence   Decimal?       @db.Decimal(5, 4)
+  autoMethod       AutoMethod
+  manualLabel      SentimentLabel?
+  finalLabel       SentimentLabel
+  labelSource      LabelSource
   preprocessedText String?        @db.Text
   modelVersion     String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  reviewNotes      String?        @db.Text
   feedback         Feedback       @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  reviewedByUser   User?          @relation("SentimentReviewedByUser", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   analyzedAt       DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  @@index([label])
+  @@index([autoLabel])
+  @@index([finalLabel])
+  @@index([labelSource])
+  @@index([autoMethod])
+  @@index([reviewedByUserId])
 }

@@ -198,7 +198,7 @@ export default async function SiswaProgresPage() {
         />
         <ProgressMetricCard
           label="Tanggapan Belum Lengkap"
-          helper="Tryout yang masih perlu kamu tindak lanjuti dengan feedback."
+          helper="Tryout yang masih perlu kamu tindak lanjuti dengan umpan balik pembelajaran."
           tone="orange"
           value={String(pendingFeedbackCount)}
         />
@@ -226,7 +226,7 @@ export default async function SiswaProgresPage() {
             <ProgressHighlight
               label="Kelengkapan Tanggapan"
               value={`${completedSessions.length === 0 ? 0 : Math.max(0, 100 - Math.round((pendingFeedbackCount / completedSessions.length) * 100))}%`}
-              helper={`${Math.max(0, completedSessions.length - pendingFeedbackCount)} tryout sudah punya tanggapan belajar.`}
+              helper={`${Math.max(0, completedSessions.length - pendingFeedbackCount)} tryout sudah punya umpan balik pembelajaran.`}
               percent={
                 completedSessions.length === 0
                   ? 0
@@ -242,7 +242,7 @@ export default async function SiswaProgresPage() {
             </p>
             <p className="mt-2 text-sm leading-7 text-slate-600">
               {pendingFeedbackCount > 0
-                ? `Masih ada ${pendingFeedbackCount} tryout yang belum dilengkapi tanggapan. Menyelesaikannya akan membantu evaluasi belajarmu jadi lebih lengkap.`
+                ? `Masih ada ${pendingFeedbackCount} tryout yang belum dilengkapi umpan balik pembelajaran. Menyelesaikannya akan membantu evaluasi belajarmu jadi lebih lengkap.`
                 : completedSessions.length > 0
                   ? "Progresmu sudah cukup rapi. Kamu bisa lanjut mengerjakan tryout lain untuk menambah jam latihan."
                   : "Mulailah dari satu tryout terlebih dahulu agar perkembangan belajarmu mulai tercatat di sistem."}

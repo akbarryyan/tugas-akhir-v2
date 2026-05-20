@@ -265,7 +265,7 @@ export default async function SiswaPage() {
         />
         <StudentMetricCard
           accent="blue"
-          helper={`${pendingFeedbackCount} feedback menunggu`}
+          helper={`${pendingFeedbackCount} umpan balik menunggu`}
           label="Tanggapan"
           trend="Perlu diisi"
           value={String(pendingFeedbackCount)}
@@ -309,7 +309,7 @@ export default async function SiswaPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-700">Snapshot Belajar</p>
                 <p className="mt-1 text-xs leading-5 text-slate-400">
-                  Visual ringkas untuk tryout, progres, hasil, dan feedback.
+                  Visual ringkas untuk tryout, progres, hasil, dan umpan balik pembelajaran.
                 </p>
               </div>
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500">
@@ -409,7 +409,7 @@ export default async function SiswaPage() {
                 {pendingFeedbackCount}
               </p>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                Isi feedback setelah tryout supaya guru bisa memahami pengalaman belajarmu dengan lebih baik.
+                Isi umpan balik pembelajaran setelah tryout supaya guru bisa memahami pengalaman belajarmu di kelas dengan lebih baik.
               </p>
             </div>
           </div>
@@ -431,7 +431,7 @@ export default async function SiswaPage() {
               accent="orange"
               label="Tindak Lanjut"
               title={`${pendingFeedbackCount} tanggapan`}
-              subtitle="Selesaikan feedback setelah tryout"
+              subtitle="Selesaikan umpan balik setelah tryout"
             />
           </div>
         </div>

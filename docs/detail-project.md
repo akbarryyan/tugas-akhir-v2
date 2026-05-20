@@ -6,7 +6,7 @@
 ## 1. Deskripsi Singkat
 Sistem ini merupakan aplikasi berbasis web yang digunakan untuk:
 - Menyediakan fitur tryout bagi siswa
-- Mengumpulkan umpan balik (feedback) siswa setelah tryout
+- Mengumpulkan umpan balik siswa setelah tryout tentang proses pembelajaran pada mata pelajaran terkait
 - Menganalisis sentimen dari feedback menggunakan metode Naive Bayes
 - Menampilkan hasil analisis dalam bentuk dashboard
 
@@ -82,14 +82,14 @@ Analisis dilakukan berdasarkan:
 - Melihat mata pelajaran yang diampu
 - Mengelola soal tryout (CRUD) pada mata pelajaran yang diampu
 - Melihat hasil tryout siswa berdasarkan mata pelajaran yang diampu
-- Melihat feedback siswa berdasarkan mata pelajaran yang diampu
+- Melihat umpan balik siswa terhadap proses pembelajaran berdasarkan mata pelajaran yang diampu
 - Melihat hasil analisis sentimen berdasarkan mata pelajaran dan aspek pembelajaran pada mata pelajaran yang diampu
 
 ### 3. Siswa
 - Login ke sistem
 - Mengikuti tryout berdasarkan mata pelajaran
 - Melihat hasil tryout
-- Mengisi feedback setelah tryout
+- Mengisi umpan balik pembelajaran setelah tryout
 
 ---
 
@@ -104,13 +104,13 @@ Analisis dilakukan berdasarkan:
 2. Siswa mengerjakan soal
 3. Siswa submit jawaban
 4. Sistem menghitung skor
-5. Siswa mengisi feedback
+5. Siswa mengisi umpan balik pembelajaran
 
 ---
 
 ## 7. Konsep Feedback
 
-Setelah tryout, siswa wajib mengisi feedback:
+Setelah tryout, siswa wajib mengisi umpan balik pembelajaran:
 
 ### Field:
 - Mata pelajaran (otomatis)
@@ -120,7 +120,7 @@ Setelah tryout, siswa wajib mengisi feedback:
 ### Aspek pembelajaran:
 - Materi
 - Penyampaian
-- Soal
+- Evaluasi
 
 ---
 
@@ -150,8 +150,8 @@ Setelah tryout, siswa wajib mengisi feedback:
 2. Siswa memilih mata pelajaran
 3. Siswa mengerjakan tryout
 4. Siswa submit jawaban
-5. Siswa mengisi feedback
-6. Sistem mengirim komentar ke API NLP
+5. Siswa mengisi umpan balik pembelajaran
+6. Sistem mengirim komentar umpan balik pembelajaran ke API NLP
 7. API mengembalikan hasil sentimen
 8. Data disimpan ke database
 9. Admin melihat dashboard
@@ -167,7 +167,7 @@ Setelah tryout, siswa wajib mengisi feedback:
 - CRUD mata pelajaran
 - Menentukan guru pengampu mata pelajaran
 - Melihat seluruh hasil tryout
-- Melihat seluruh feedback
+- Melihat seluruh umpan balik pembelajaran
 - Melihat dashboard analisis sentimen
 
 ### Guru:
@@ -175,7 +175,7 @@ Setelah tryout, siswa wajib mengisi feedback:
 - Melihat mata pelajaran yang diampu
 - CRUD soal tryout sesuai mata pelajaran yang diampu
 - Melihat hasil tryout siswa
-- Melihat feedback siswa
+- Melihat umpan balik siswa
 - Melihat dashboard sentimen per mata pelajaran dan per aspek pembelajaran
 
 ### Siswa:
@@ -183,7 +183,7 @@ Setelah tryout, siswa wajib mengisi feedback:
 - Memilih mata pelajaran
 - Mengerjakan tryout
 - Melihat skor
-- Mengisi feedback
+- Mengisi umpan balik pembelajaran
 
 ---
 
@@ -193,7 +193,7 @@ Menampilkan:
 - Sentimen per mata pelajaran
 - Sentimen per aspek pembelajaran
 - Grafik distribusi sentimen
-- Tabel data feedback
+- Tabel data umpan balik pembelajaran
 
 ---
 
@@ -201,7 +201,7 @@ Menampilkan:
 
 - Label sentimen (positif, negatif, netral)
 - Grafik hasil analisis
-- Data feedback siswa
+- Data umpan balik siswa
 - Insight untuk evaluasi pembelajaran
 
 ---

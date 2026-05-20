@@ -40,6 +40,8 @@ export default async function GuruPage() {
     tryoutSessionCount,
     latestTryouts,
     subjectPerformance,
+    analyzedFeedbackCount,
+    manualReviewedSentimentCount,
   ] = teacherProfile
     ? await Promise.all([
         prisma.question.count({
@@ -121,8 +123,35 @@ export default async function GuruPage() {
             },
           },
         }),
+        prisma.sentimentAnalysis.count({
+          where: {
+            feedback: {
+              subject: {
+                subjectTeachers: {
+                  some: {
+                    teacherId: teacherProfile.id,
+                  },
+                },
+              },
+            },
+          },
+        }),
+        prisma.sentimentAnalysis.count({
+          where: {
+            feedback: {
+              subject: {
+                subjectTeachers: {
+                  some: {
+                    teacherId: teacherProfile.id,
+                  },
+                },
+              },
+            },
+            labelSource: "MANUAL",
+          },
+        }),
       ])
-    : [0, 0, 0, 0, 0, [], []];
+    : [0, 0, 0, 0, 0, [], [], 0, 0];
 
   const topSubject = [...subjectPerformance].sort(
     (left, right) => right._count.questions - left._count.questions,
@@ -176,6 +205,12 @@ export default async function GuruPage() {
           metric={`${publishedTryoutCount} publik`}
           description="Bangun paket tryout dari bank soal, atur status draft, lalu publikasikan saat siap."
         />
+        <AdminLinkCard
+          href="/guru/feedback"
+          title="Review Sentimen"
+          metric={`${manualReviewedSentimentCount}/${analyzedFeedbackCount || 0} ditinjau`}
+          description="Periksa hasil analisis sentimen umpan balik siswa terhadap pembelajaran dan koreksi hanya bila label otomatis belum tepat."
+        />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.12fr_0.88fr]">
@@ -210,6 +245,15 @@ export default async function GuruPage() {
                 topSubject
                   ? `${topSubject._count.questions} soal aktif tersedia pada mata pelajaran ini.`
                   : "Tambahkan soal lalu susun bank soal agar sistem dapat menampilkan mapel teratas."
+              }
+            />
+            <FeatureCard
+              accent="emerald"
+              title={`${manualReviewedSentimentCount} umpan balik ditinjau`}
+              description={
+                analyzedFeedbackCount > 0
+                  ? `${Math.max(0, analyzedFeedbackCount - manualReviewedSentimentCount)} umpan balik lain masih memakai label otomatis.`
+                  : "Belum ada umpan balik teranalisis pada mata pelajaran ampuan Anda."
               }
             />
           </div>
@@ -254,6 +298,12 @@ export default async function GuruPage() {
                 className="inline-flex items-center rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
               >
                 Buka Modul Tryout
+              </Link>
+              <Link
+                href="/guru/feedback"
+                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700"
+              >
+                Review Feedback
               </Link>
             </div>
           </SectionCard>

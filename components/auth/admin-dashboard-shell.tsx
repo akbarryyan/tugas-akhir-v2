@@ -34,6 +34,7 @@ const navigationItems = [
   { href: "/admin/mapel", label: "Akademik", icon: SubjectIcon },
   { href: "/admin/tryout", label: "Tryout", icon: ClipboardIcon },
   { href: "/admin/pengampu", label: "Pengampu", icon: AssignmentIcon },
+  { href: "/admin/feedback", label: "Review Sentimen", icon: MessageIcon },
 ];
 
 const pageTitleByPath: Record<string, string> = {
@@ -45,6 +46,7 @@ const pageTitleByPath: Record<string, string> = {
   "/admin/tryout": "Monitoring Tryout",
   "/admin/profile": "Profil Admin",
   "/admin/aktivitas": "Riwayat Aktivitas",
+  "/admin/feedback": "Review Sentimen",
 };
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
@@ -655,6 +657,16 @@ function ClipboardIcon() {
       <path d="M7 6.5h10A1.5 1.5 0 0 1 18.5 8v11A1.5 1.5 0 0 1 17 20.5H7A1.5 1.5 0 0 1 5.5 19V8A1.5 1.5 0 0 1 7 6.5Z" />
       <path d="M8.5 11h7" />
       <path d="M8.5 15h5" />
+    </svg>
+  );
+}
+
+function MessageIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M5.5 7.5A2.5 2.5 0 0 1 8 5h8a2.5 2.5 0 0 1 2.5 2.5v5A2.5 2.5 0 0 1 16 15H11l-3.5 3v-3H8A2.5 2.5 0 0 1 5.5 12.5v-5Z" />
+      <path d="M9 9.5h6" />
+      <path d="M9 12h4" />
     </svg>
   );
 }

@@ -1,12 +1,13 @@
 "use server";
 
-import { LearningAspect, Prisma, TryoutStatus } from "@prisma/client";
+import { LabelSource, LearningAspect, Prisma, TryoutStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { predictSentiment } from "@/lib/nlp/sentiment-analysis";
 import {
   REQUIRED_FEEDBACK_ASPECTS,
 } from "@/lib/student-feedback";
@@ -17,7 +18,7 @@ const feedbackFormSchema = z.object({
     .string()
     .trim()
     .min(12, "Tanggapan aspek penyampaian minimal 12 karakter."),
-  soal: z.string().trim().min(12, "Tanggapan aspek soal minimal 12 karakter."),
+  soal: z.string().trim().min(12, "Tanggapan aspek evaluasi minimal 12 karakter."),
   tryoutSessionId: z.string().trim().min(1, "Sesi tryout tidak valid."),
 });
 
@@ -36,12 +37,12 @@ function redirectWithMessage(
 
 function getErrorMessage(error: unknown) {
   if (error instanceof z.ZodError) {
-    return error.issues[0]?.message ?? "Form tanggapan belum valid.";
+    return error.issues[0]?.message ?? "Form umpan balik pembelajaran belum valid.";
   }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
-      return "Tanggapan untuk aspek yang sama sudah ada. Muat ulang halaman lalu coba lagi.";
+      return "Umpan balik untuk aspek yang sama sudah ada. Muat ulang halaman lalu coba lagi.";
     }
   }
 
@@ -49,7 +50,53 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Terjadi kesalahan saat menyimpan tanggapan.";
+  return "Terjadi kesalahan saat menyimpan umpan balik pembelajaran.";
+}
+
+async function analyzeFeedbackAndPersistSentiment(params: {
+  comment: string;
+  feedbackId: string;
+  aspect: LearningAspect;
+  subjectName: string;
+}) {
+  try {
+    const prediction = await predictSentiment({
+      aspect: params.aspect,
+      comment: params.comment,
+      subject: params.subjectName,
+    });
+
+    await prisma.sentimentAnalysis.upsert({
+      where: {
+        feedbackId: params.feedbackId,
+      },
+      create: {
+        autoConfidence: prediction.autoConfidence,
+        autoLabel: prediction.autoLabel,
+        autoMethod: prediction.autoMethod,
+        feedbackId: params.feedbackId,
+        finalLabel: prediction.autoLabel,
+        labelSource: LabelSource.AUTO,
+        modelVersion: prediction.modelVersion,
+        preprocessedText: prediction.preprocessedText,
+      },
+      update: {
+        autoConfidence: prediction.autoConfidence,
+        autoLabel: prediction.autoLabel,
+        autoMethod: prediction.autoMethod,
+        finalLabel: prediction.autoLabel,
+        labelSource: LabelSource.AUTO,
+        manualLabel: null,
+        modelVersion: prediction.modelVersion,
+        preprocessedText: prediction.preprocessedText,
+        reviewNotes: null,
+        reviewedAt: null,
+        reviewedByUserId: null,
+      },
+    });
+  } catch (error) {
+    console.error("Sentiment analysis failed for feedback", params.feedbackId, error);
+  }
 }
 
 export async function submitStudentFeedbackAction(formData: FormData) {
@@ -100,13 +147,18 @@ export async function submitStudentFeedbackAction(formData: FormData) {
             id: true,
             title: true,
             subjectId: true,
+            subject: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
     });
 
     if (!tryoutSession) {
-      throw new Error("Sesi tryout untuk tanggapan tidak ditemukan.");
+      throw new Error("Sesi tryout untuk pengisian umpan balik tidak ditemukan.");
     }
 
     const commentsByAspect: Record<LearningAspect, string> = {
@@ -115,9 +167,11 @@ export async function submitStudentFeedbackAction(formData: FormData) {
       [LearningAspect.SOAL]: parsed.soal,
     };
 
-    await prisma.$transaction(async (tx) => {
+    const upsertedFeedbacks = await prisma.$transaction(async (tx) => {
+      const feedbacks = [];
+
       for (const aspect of REQUIRED_FEEDBACK_ASPECTS) {
-        await tx.feedback.upsert({
+        const feedback = await tx.feedback.upsert({
           where: {
             tryoutSessionId_aspect: {
               aspect,
@@ -135,8 +189,23 @@ export async function submitStudentFeedbackAction(formData: FormData) {
             comment: commentsByAspect[aspect],
           },
         });
+
+        feedbacks.push(feedback);
       }
+
+      return feedbacks;
     });
+
+    await Promise.all(
+      upsertedFeedbacks.map((feedback) =>
+        analyzeFeedbackAndPersistSentiment({
+          aspect: feedback.aspect,
+          comment: feedback.comment,
+          feedbackId: feedback.id,
+          subjectName: tryoutSession.tryout.subject.name,
+        }),
+      ),
+    );
 
     revalidatePath("/siswa");
     revalidatePath("/siswa/tryout");
@@ -148,7 +217,7 @@ export async function submitStudentFeedbackAction(formData: FormData) {
     redirectWithMessage(
       `/siswa/tanggapan?session=${tryoutSession.id}`,
       "success",
-      `Tanggapan untuk tryout ${tryoutSession.tryout.title} berhasil disimpan.`,
+      `Umpan balik pembelajaran untuk ${tryoutSession.tryout.subject.name} berhasil disimpan.`,
     );
   } catch (error) {
     const fallbackPath = tryoutSessionId

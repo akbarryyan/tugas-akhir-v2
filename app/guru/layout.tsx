@@ -13,7 +13,7 @@ export default async function GuruLayout({
   return (
     <TeacherDashboardShell
       user={session.user}
-      description="Kelola perangkat evaluasi, pantau capaian belajar siswa, dan tinjau tanggapan siswa pada mata pelajaran yang Anda ampu."
+      description="Kelola perangkat evaluasi, pantau capaian belajar siswa, dan tinjau umpan balik siswa terhadap pembelajaran pada mata pelajaran yang Anda ampu."
     >
       {children}
     </TeacherDashboardShell>

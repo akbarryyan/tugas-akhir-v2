@@ -101,7 +101,7 @@ export default async function SiswaHasilPage() {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Hasil</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
             Tinjau hasil tryout yang sudah kamu kerjakan, bandingkan progresnya, dan lihat tryout
-            mana yang masih perlu kamu lengkapi dengan tanggapan belajar.
+            mana yang masih perlu kamu lengkapi dengan umpan balik pembelajaran.
           </p>
         </div>
       </section>
@@ -121,7 +121,7 @@ export default async function SiswaHasilPage() {
         />
         <ResultSummaryCard
           label="Rata-rata Nilai"
-          helper={`${waitingFeedbackCount} tryout masih menunggu tanggapan belajar.`}
+          helper={`${waitingFeedbackCount} tryout masih menunggu umpan balik pembelajaran.`}
           value={averageScore}
           tone="orange"
         />
@@ -246,7 +246,7 @@ function ResultHistoryCard({
             hasFeedback ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"
           }`}
         >
-          {hasFeedback ? "Tanggapan lengkap" : "Perlu tanggapan"}
+          {hasFeedback ? "Umpan balik lengkap" : "Perlu umpan balik"}
         </span>
       </div>
 

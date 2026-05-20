@@ -11,7 +11,7 @@ export const REQUIRED_FEEDBACK_ASPECT_COUNT = REQUIRED_FEEDBACK_ASPECTS.length;
 export const feedbackAspectLabelMap: Record<LearningAspect, string> = {
   [LearningAspect.MATERI]: "Materi",
   [LearningAspect.PENYAMPAIAN]: "Penyampaian",
-  [LearningAspect.SOAL]: "Soal",
+  [LearningAspect.SOAL]: "Evaluasi",
 };
 
 export function getFeedbackCompletionCount(

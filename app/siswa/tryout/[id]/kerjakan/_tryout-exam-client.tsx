@@ -165,6 +165,22 @@ export function TryoutExamClient({
       <input type="hidden" name="tryoutId" value={tryoutId} />
       <input type="hidden" name="errorRedirectPath" value={errorRedirectPath} />
       <input type="hidden" name="successRedirectPath" value={successRedirectPath} />
+      {questions.map((item) => {
+        const selectedOption = selectedAnswers[item.question.id];
+
+        if (!selectedOption) {
+          return null;
+        }
+
+        return (
+          <input
+            key={item.question.id}
+            type="hidden"
+            name={`answer_${item.question.id}`}
+            value={selectedOption}
+          />
+        );
+      })}
 
       {!hasStarted ? (
         <div className="flex flex-1 items-start justify-center px-5 py-5 sm:px-6">

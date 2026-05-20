@@ -244,8 +244,8 @@ export default async function SiswaTryoutDetailPage({
               value={`${feedbackCompletionCount}/${REQUIRED_FEEDBACK_ASPECT_COUNT} aspek`}
               description={
                 hasCompleteFeedback
-                  ? "Tanggapan belajar untuk tryout ini sudah lengkap."
-                  : "Masih ada aspek tanggapan yang perlu kamu lengkapi."
+                  ? "Umpan balik pembelajaran untuk mata pelajaran ini sudah lengkap."
+                  : "Masih ada aspek umpan balik yang perlu kamu lengkapi."
               }
             />
           </div>
@@ -258,18 +258,18 @@ export default async function SiswaTryoutDetailPage({
                     Tindak Lanjut
                   </p>
                   <h2 className="mt-2 text-xl font-semibold text-slate-950">
-                    Lengkapi tanggapan belajarmu
+                    Lengkapi umpan balik pembelajaranmu
                   </h2>
                   <p className="mt-2 text-sm leading-7 text-slate-600">
-                    Agar evaluasi tryout ini utuh, isi seluruh aspek tanggapan
-                    materi, penyampaian, dan soal pada halaman tanggapan.
+                    Setelah tryout selesai, isi seluruh aspek umpan balik pembelajaran
+                    materi, penyampaian, dan evaluasi pada halaman tanggapan.
                   </p>
                 </div>
                 <Link
                   href={`/siswa/tanggapan?session=${latestSession.id}#form-tanggapan`}
                   className="inline-flex h-11 items-center rounded-full bg-orange-500 px-5 text-sm font-semibold text-white transition hover:bg-orange-400"
                 >
-                  Isi Tanggapan Sekarang
+                  Isi Umpan Balik Sekarang
                 </Link>
               </div>
             </section>

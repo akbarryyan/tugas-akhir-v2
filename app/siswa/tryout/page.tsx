@@ -167,7 +167,7 @@ export default async function SiswaTryoutPage() {
         />
         <TryoutStatCard
           accent="orange"
-          helper="Cek kembali tryout yang masih menunggu tanggapan belajar."
+          helper="Cek kembali tryout yang masih menunggu umpan balik pembelajaran."
           label="Menunggu Tanggapan"
           value={String(pendingFeedbackCount)}
         />
@@ -402,7 +402,7 @@ function TryoutListCard({
         )}
         <span className="text-sm text-slate-500">
           {status === "Perlu Tanggapan"
-            ? "Isi tanggapan dulu agar evaluasi belajarmu lengkap, lalu kamu tetap bisa membuka detail tryout."
+            ? "Isi umpan balik pembelajaran dulu agar evaluasi belajarmu lebih lengkap, lalu kamu tetap bisa membuka detail tryout."
             : status === "Selesai"
               ? "Hasil terbaru sudah tersimpan dan siap kamu tinjau kembali."
               : "Tryout ini siap kamu mulai kapan saja."}

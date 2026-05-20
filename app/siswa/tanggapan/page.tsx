@@ -113,7 +113,7 @@ export default async function SiswaTanggapanPage({
             },
             sentiment: {
               select: {
-                label: true,
+                finalLabel: true,
               },
             },
           },
@@ -155,8 +155,9 @@ export default async function SiswaTanggapanPage({
             Tanggapan
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
-            Lengkapi evaluasi belajar per tryout dengan tiga aspek utama: materi, penyampaian,
-            dan kualitas soal. Dengan begitu, tindak lanjut belajarmu jadi lebih jelas dan utuh.
+            Setelah menyelesaikan tryout, lengkapi umpan balik tentang proses pembelajaran pada
+            mata pelajaran ini melalui tiga aspek utama: materi, penyampaian, dan evaluasi
+            belajar. Dengan begitu, tindak lanjut pembelajaran di kelas bisa dipahami lebih utuh.
           </p>
         </div>
       </section>
@@ -198,8 +199,9 @@ export default async function SiswaTanggapanPage({
                 Sesi yang Perlu Ditindak Lanjuti
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Pilih tryout yang ingin kamu lengkapi tanggapannya. Status lengkap dihitung jika
-                ketiga aspek utama sudah terisi.
+                Pilih sesi tryout yang ingin kamu gunakan untuk mengirim umpan balik tentang
+                pembelajaran pada mata pelajaran terkait. Status lengkap dihitung jika ketiga
+                aspek utama sudah terisi.
               </p>
             </div>
             <Link
@@ -212,8 +214,8 @@ export default async function SiswaTanggapanPage({
 
           {pendingSessions.length === 0 ? (
             <div className="mt-5 rounded-[1.5rem] border border-dashed border-emerald-200 bg-emerald-50/60 px-5 py-6 text-sm leading-7 text-emerald-800">
-              Semua tryout selesai sudah memiliki tanggapan lengkap. Kamu bisa lanjut mengerjakan
-              tryout lain atau meninjau riwayat feedback di bawah.
+              Semua sesi tryout yang selesai sudah memiliki umpan balik pembelajaran yang lengkap.
+              Kamu bisa lanjut mengerjakan tryout lain atau meninjau riwayat tanggapan di bawah.
             </div>
           ) : (
             <div className="mt-5 grid gap-4">
@@ -244,14 +246,15 @@ export default async function SiswaTanggapanPage({
               Form Tanggapan Belajar
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Isi seluruh aspek agar evaluasi tryout tersimpan lengkap dan mudah ditindak lanjuti.
+              Isi seluruh aspek agar umpan balik tentang proses pembelajaran tersimpan lengkap dan
+              mudah ditindak lanjuti.
             </p>
           </div>
 
           {!selectedPendingSession ? (
             <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-6 text-sm leading-7 text-slate-500">
               Tidak ada sesi yang perlu diisi saat ini. Setelah menyelesaikan tryout baru, form
-              tanggapan akan muncul otomatis di sini.
+              umpan balik pembelajaran akan muncul otomatis di sini.
             </div>
           ) : (
             <form action={submitStudentFeedbackAction} className="mt-5 space-y-5">
@@ -296,22 +299,22 @@ export default async function SiswaTanggapanPage({
                 <FeedbackTextareaField
                   name="materi"
                   title="Materi"
-                  description="Ceritakan apakah materi tryout terasa relevan, jelas, dan sesuai dengan kebutuhan belajarmu."
-                  placeholder="Contoh: Materi sudah sesuai, tetapi ada beberapa topik yang menurut saya masih perlu diperbanyak..."
+                  description="Ceritakan apakah materi pelajaran yang disampaikan di kelas terasa jelas, relevan, dan membantu pemahamanmu."
+                  placeholder="Contoh: Materi yang diajarkan sudah cukup jelas, tetapi ada beberapa topik yang menurut saya perlu dijelaskan lebih perlahan..."
                   defaultValue={defaultCommentsByAspect[LearningAspect.MATERI]}
                 />
                 <FeedbackTextareaField
                   name="penyampaian"
                   title="Penyampaian"
-                  description="Jelaskan bagaimana pengalamanmu saat memahami instruksi, alur pengerjaan, atau cara penyajian tryout."
-                  placeholder="Contoh: Alur pengerjaan cukup jelas, namun saya butuh penjelasan yang lebih ringkas di bagian awal..."
+                  description="Jelaskan bagaimana cara guru menyampaikan materi, menjawab pertanyaan, dan membangun suasana belajar di kelas."
+                  placeholder="Contoh: Cara penyampaiannya mudah dipahami, tetapi saya akan lebih terbantu jika ada lebih banyak contoh saat penjelasan..."
                   defaultValue={defaultCommentsByAspect[LearningAspect.PENYAMPAIAN]}
                 />
                 <FeedbackTextareaField
                   name="soal"
-                  title="Soal"
-                  description="Berikan tanggapan tentang kualitas soal, tingkat kesulitan, dan variasi pertanyaan yang kamu hadapi."
-                  placeholder="Contoh: Soal cukup menantang dan bervariasi, tetapi ada beberapa nomor yang menurut saya terlalu mirip..."
+                  title="Evaluasi"
+                  description="Berikan tanggapan tentang tugas, latihan, kuis, atau bentuk evaluasi yang diberikan untuk mengukur pemahamanmu."
+                  placeholder="Contoh: Latihan dan tugas yang diberikan cukup membantu, tetapi saya berharap ada pembahasan yang lebih rinci setelah evaluasi..."
                   defaultValue={defaultCommentsByAspect[LearningAspect.SOAL]}
                 />
               </div>
@@ -319,7 +322,8 @@ export default async function SiswaTanggapanPage({
               <div className="flex flex-wrap items-center gap-3">
                 <SubmitFeedbackButton />
                 <span className="text-sm text-slate-500">
-                  Setelah tersimpan, status tryout ini akan berubah menjadi tanggapan lengkap.
+                  Setelah tersimpan, sesi ini akan tercatat sebagai umpan balik pembelajaran yang
+                  lengkap.
                 </span>
               </div>
             </form>
@@ -333,7 +337,8 @@ export default async function SiswaTanggapanPage({
             Riwayat Tanggapan Terkirim
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Ringkasan semua aspek feedback yang sudah kamu kirim pada tryout-tryout sebelumnya.
+            Ringkasan semua umpan balik pembelajaran yang sudah kamu kirim setelah tryout
+            sebelumnya.
           </p>
         </div>
 
@@ -349,7 +354,7 @@ export default async function SiswaTanggapanPage({
                 aspect={feedbackItem.aspect}
                 comment={feedbackItem.comment}
                 createdAt={feedbackItem.createdAt}
-                sentiment={feedbackItem.sentiment?.label ?? null}
+                sentiment={feedbackItem.sentiment?.finalLabel ?? null}
                 subjectName={feedbackItem.subject.name}
                 title={feedbackItem.tryoutSession.tryout.title}
                 tryoutId={feedbackItem.tryoutSession.tryout.id}

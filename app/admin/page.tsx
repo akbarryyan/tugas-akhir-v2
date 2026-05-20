@@ -11,6 +11,8 @@ export default async function AdminPage() {
     tryoutCount,
     publishedTryoutCount,
     assignedSubjectGroups,
+    analyzedFeedbackCount,
+    manualReviewedSentimentCount,
   ] = await Promise.all([
     prisma.teacherProfile.count(),
     prisma.studentProfile.count(),
@@ -24,6 +26,12 @@ export default async function AdminPage() {
     }),
     prisma.subjectTeacher.groupBy({
       by: ["subjectId"],
+    }),
+    prisma.sentimentAnalysis.count(),
+    prisma.sentimentAnalysis.count({
+      where: {
+        labelSource: "MANUAL",
+      },
     }),
   ]);
 
@@ -70,6 +78,13 @@ export default async function AdminPage() {
       total: tryoutCount,
       unit: "paket",
     },
+    {
+      href: "/admin/feedback",
+      label: "Review Sentimen",
+      note: "Tinjau auto-label umpan balik siswa terhadap pembelajaran dan lakukan koreksi manual jika diperlukan.",
+      total: analyzedFeedbackCount,
+      unit: "umpan balik",
+    },
   ];
 
   const spotlightItems = [
@@ -94,6 +109,12 @@ export default async function AdminPage() {
       meta: `${draftTryoutCount} draft menunggu peninjauan`,
       tone: "from-amber-500/15 to-orange-400/10 text-amber-700",
     },
+    {
+      label: "Review Sentimen",
+      value: `${manualReviewedSentimentCount} manual`,
+      meta: `${Math.max(0, analyzedFeedbackCount - manualReviewedSentimentCount)} umpan balik masih otomatis`,
+      tone: "from-violet-500/15 to-fuchsia-400/10 text-violet-700",
+    },
   ];
 
   return (
@@ -117,6 +138,12 @@ export default async function AdminPage() {
               className="inline-flex items-center rounded-full border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               Pantau Tryout
+            </Link>
+            <Link
+              href="/admin/feedback"
+              className="inline-flex items-center rounded-full border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Review Sentimen
             </Link>
           </div>
         </div>

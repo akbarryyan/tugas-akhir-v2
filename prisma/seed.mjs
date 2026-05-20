@@ -3,7 +3,9 @@ import { randomBytes, scryptSync } from "node:crypto";
 import { URL } from "node:url";
 
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { AuthMethod, PrismaClient, Role } from "@prisma/client";
+import prismaPkg from "@prisma/client";
+
+const { AuthMethod, PrismaClient, Role } = prismaPkg;
 
 const databaseUrl = process.env.DATABASE_URL;
 
