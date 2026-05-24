@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LabelSource, LearningAspect, Role, SentimentLabel } from "@prisma/client";
 
 import { PageIntro, SearchToolbar, SectionCard, StatusAlert } from "@/app/admin/_components";
+import { SentimentDistributionSection, type SentimentChartData } from "@/app/admin/_sentiment-charts";
 import { requireRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -35,8 +36,21 @@ export default async function GuruFeedbackPage({
     },
   });
 
-  const feedbacks = teacherProfile
-    ? await prisma.feedback.findMany({
+  const teacherSubjectFilter = teacherProfile
+    ? {
+        subject: {
+          subjectTeachers: {
+            some: {
+              teacherId: teacherProfile.id,
+            },
+          },
+        },
+      }
+    : undefined;
+
+  const [feedbacks, allSentimentStats] = await Promise.all([
+    teacherProfile
+    ? prisma.feedback.findMany({
         where: {
           subject: {
             subjectTeachers: {
@@ -137,12 +151,33 @@ export default async function GuruFeedbackPage({
         },
         take: 40,
       })
-    : [];
+    : [],
+    teacherProfile
+      ? prisma.sentimentAnalysis.findMany({
+          where: {
+            feedback: teacherSubjectFilter,
+          },
+          select: {
+            finalLabel: true,
+            feedback: {
+              select: {
+                aspect: true,
+                subject: {
+                  select: { id: true, name: true },
+                },
+              },
+            },
+          },
+        })
+      : [],
+  ]);
 
   const reviewableFeedbacks = feedbacks.filter((feedback) => feedback.sentiment);
   const manualCount = reviewableFeedbacks.filter(
     (feedback) => feedback.sentiment?.labelSource === LabelSource.MANUAL,
   ).length;
+
+  const chartData = buildSentimentChartData(allSentimentStats);
 
   return (
     <div className="space-y-6">
@@ -173,6 +208,16 @@ export default async function GuruFeedbackPage({
           tone="amber"
           helper="Komentar yang final label-nya masih mengikuti sistem otomatis."
         />
+      </section>
+
+      <section className="rounded-[1.6rem] border border-slate-200/80 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+        <div className="mb-5">
+          <p className="text-sm font-semibold text-slate-900">Distribusi Sentimen</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Sebaran label sentimen final pada mata pelajaran yang Anda ampu, dikelompokkan per aspek pembelajaran dan per mapel.
+          </p>
+        </div>
+        <SentimentDistributionSection data={chartData} />
       </section>
 
       <SectionCard
@@ -480,3 +525,61 @@ function formatDateTime(date: Date) {
     year: "numeric",
   }).format(date);
 }
+
+const aspectDisplayMap: Record<LearningAspect, string> = {
+  [LearningAspect.MATERI]: "Materi",
+  [LearningAspect.PENYAMPAIAN]: "Penyampaian",
+  [LearningAspect.SOAL]: "Evaluasi Soal",
+};
+
+type SentimentStatRow = {
+  finalLabel: SentimentLabel;
+  feedback: {
+    aspect: LearningAspect;
+    subject: { id: string; name: string };
+  };
+};
+
+function buildSentimentChartData(rows: SentimentStatRow[]): SentimentChartData {
+  const overall = { positif: 0, negatif: 0, netral: 0 };
+  const aspectMap = new Map<LearningAspect, { positif: number; negatif: number; netral: number }>();
+  const subjectMap = new Map<string, { name: string; positif: number; negatif: number; netral: number }>();
+
+  for (const row of rows) {
+    const label = row.finalLabel;
+    const aspect = row.feedback.aspect;
+    const subjectId = row.feedback.subject.id;
+    const subjectName = row.feedback.subject.name;
+
+    if (label === SentimentLabel.POSITIF) overall.positif++;
+    else if (label === SentimentLabel.NEGATIF) overall.negatif++;
+    else overall.netral++;
+
+    if (!aspectMap.has(aspect)) aspectMap.set(aspect, { positif: 0, negatif: 0, netral: 0 });
+    const ac = aspectMap.get(aspect)!;
+    if (label === SentimentLabel.POSITIF) ac.positif++;
+    else if (label === SentimentLabel.NEGATIF) ac.negatif++;
+    else ac.netral++;
+
+    if (!subjectMap.has(subjectId)) subjectMap.set(subjectId, { name: subjectName, positif: 0, negatif: 0, netral: 0 });
+    const sc = subjectMap.get(subjectId)!;
+    if (label === SentimentLabel.POSITIF) sc.positif++;
+    else if (label === SentimentLabel.NEGATIF) sc.negatif++;
+    else sc.netral++;
+  }
+
+  const byAspect = ([LearningAspect.MATERI, LearningAspect.PENYAMPAIAN, LearningAspect.SOAL] as const).map(
+    (aspect) => {
+      const counts = aspectMap.get(aspect) ?? { positif: 0, negatif: 0, netral: 0 };
+      return { label: aspectDisplayMap[aspect], counts };
+    },
+  );
+
+  const bySubject = Array.from(subjectMap.values())
+    .sort((a, b) => (b.positif + b.negatif + b.netral) - (a.positif + a.negatif + a.netral))
+    .slice(0, 8)
+    .map(({ name, positif, negatif, netral }) => ({ label: name, counts: { positif, negatif, netral } }));
+
+  return { overall, byAspect, bySubject };
+}
+

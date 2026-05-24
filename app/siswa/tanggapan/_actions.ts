@@ -13,12 +13,12 @@ import {
 } from "@/lib/student-feedback";
 
 const feedbackFormSchema = z.object({
-  materi: z.string().trim().min(12, "Tanggapan aspek materi minimal 12 karakter."),
+  materi: z.string().trim().min(5, "Tanggapan aspek materi minimal 5 karakter."),
   penyampaian: z
     .string()
     .trim()
-    .min(12, "Tanggapan aspek penyampaian minimal 12 karakter."),
-  soal: z.string().trim().min(12, "Tanggapan aspek evaluasi minimal 12 karakter."),
+    .min(5, "Tanggapan aspek penyampaian minimal 5 karakter."),
+  soal: z.string().trim().min(5, "Tanggapan aspek evaluasi minimal 5 karakter."),
   tryoutSessionId: z.string().trim().min(1, "Sesi tryout tidak valid."),
 });
 
@@ -32,7 +32,8 @@ function redirectWithMessage(
     type,
   });
 
-  redirect(`${path}?${params.toString()}`);
+  const connector = path.includes("?") ? "&" : "?";
+  redirect(`${path}${connector}${params.toString()}`);
 }
 
 function getErrorMessage(error: unknown) {
@@ -101,6 +102,7 @@ async function analyzeFeedbackAndPersistSentiment(params: {
 
 export async function submitStudentFeedbackAction(formData: FormData) {
   let tryoutSessionId = String(formData.get("tryoutSessionId") ?? "").trim();
+  let successData: { sessionId: string; subjectName: string; tryoutId: string } | null = null;
 
   try {
     const session = await getCurrentSession();
@@ -207,18 +209,11 @@ export async function submitStudentFeedbackAction(formData: FormData) {
       ),
     );
 
-    revalidatePath("/siswa");
-    revalidatePath("/siswa/tryout");
-    revalidatePath("/siswa/hasil");
-    revalidatePath("/siswa/progres");
-    revalidatePath("/siswa/tanggapan");
-    revalidatePath(`/siswa/tryout/${tryoutSession.tryout.id}`);
-
-    redirectWithMessage(
-      `/siswa/tanggapan?session=${tryoutSession.id}`,
-      "success",
-      `Umpan balik pembelajaran untuk ${tryoutSession.tryout.subject.name} berhasil disimpan.`,
-    );
+    successData = {
+      sessionId: tryoutSession.id,
+      subjectName: tryoutSession.tryout.subject.name,
+      tryoutId: tryoutSession.tryout.id,
+    };
   } catch (error) {
     const fallbackPath = tryoutSessionId
       ? `/siswa/tanggapan?session=${tryoutSessionId}`
@@ -226,4 +221,19 @@ export async function submitStudentFeedbackAction(formData: FormData) {
 
     redirectWithMessage(fallbackPath, "error", getErrorMessage(error));
   }
+
+  // redirect() dipanggil di luar try/catch karena di Next.js App Router,
+  // redirect() melempar error internal NEXT_REDIRECT yang akan tertangkap catch jika dipanggil di dalam try.
+  revalidatePath("/siswa");
+  revalidatePath("/siswa/tryout");
+  revalidatePath("/siswa/hasil");
+  revalidatePath("/siswa/progres");
+  revalidatePath("/siswa/tanggapan");
+  revalidatePath(`/siswa/tryout/${successData!.tryoutId}`);
+
+  redirectWithMessage(
+    `/siswa/tanggapan?session=${successData!.sessionId}`,
+    "success",
+    `Umpan balik pembelajaran untuk ${successData!.subjectName} berhasil disimpan.`,
+  );
 }

@@ -40,7 +40,7 @@ export default async function SiswaTanggapanPage({
     },
   });
 
-  const [completedSessions, recentFeedbacks] = studentProfile
+  const [completedSessions, feedbackSessions] = studentProfile
     ? await Promise.all([
         prisma.tryoutSession.findMany({
           where: {
@@ -86,41 +86,37 @@ export default async function SiswaTanggapanPage({
             },
           ],
         }),
-        prisma.feedback.findMany({
+        prisma.tryoutSession.findMany({
           where: {
             studentId: studentProfile.id,
+            feedbacks: { some: {} },
           },
           select: {
             id: true,
-            aspect: true,
-            comment: true,
-            createdAt: true,
-            tryoutSessionId: true,
-            subject: {
+            submittedAt: true,
+            score: true,
+            tryout: {
               select: {
-                name: true,
-              },
-            },
-            tryoutSession: {
-              select: {
-                tryout: {
-                  select: {
-                    id: true,
-                    title: true,
-                  },
+                id: true,
+                title: true,
+                subject: {
+                  select: { name: true },
                 },
               },
             },
-            sentiment: {
+            feedbacks: {
               select: {
-                finalLabel: true,
+                aspect: true,
+                comment: true,
+                sentiment: {
+                  select: { finalLabel: true },
+                },
               },
+              orderBy: { aspect: "asc" },
             },
           },
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 9,
+          orderBy: { submittedAt: "desc" },
+          take: 8,
         }),
       ])
     : [[], []];
@@ -132,7 +128,10 @@ export default async function SiswaTanggapanPage({
     pendingSessions.find((sessionItem) => sessionItem.id === selectedSessionId) ??
     pendingSessions[0] ??
     null;
-  const sentimentReadyCount = recentFeedbacks.filter((item) => item.sentiment).length;
+  const sentimentReadyCount = feedbackSessions.reduce(
+    (count, s) => count + s.feedbacks.filter((f) => f.sentiment).length,
+    0,
+  );
   const completedFeedbackSessionCount = completedSessions.filter((sessionItem) =>
     isFeedbackComplete(sessionItem.feedbacks),
   ).length;
@@ -178,10 +177,10 @@ export default async function SiswaTanggapanPage({
           value={String(completedFeedbackSessionCount)}
         />
         <FeedbackSummaryCard
-          helper="Total feedback aspek yang sudah pernah kamu kirim ke sistem."
-          label="Riwayat Feedback"
+          helper="Jumlah tryout yang sudah kamu beri tanggapan lengkap."
+          label="Riwayat Tryout"
           tone="blue"
-          value={String(recentFeedbacks.length)}
+          value={String(feedbackSessions.length)}
         />
         <FeedbackSummaryCard
           helper="Feedback yang sudah punya hasil analisis sentimen."
@@ -342,23 +341,14 @@ export default async function SiswaTanggapanPage({
           </p>
         </div>
 
-        {recentFeedbacks.length === 0 ? (
+        {feedbackSessions.length === 0 ? (
           <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/80 px-5 py-6 text-sm leading-7 text-slate-500">
             Belum ada tanggapan yang tersimpan.
           </div>
         ) : (
-          <div className="mt-5 space-y-3">
-            {recentFeedbacks.map((feedbackItem) => (
-              <FeedbackHistoryCard
-                key={feedbackItem.id}
-                aspect={feedbackItem.aspect}
-                comment={feedbackItem.comment}
-                createdAt={feedbackItem.createdAt}
-                sentiment={feedbackItem.sentiment?.finalLabel ?? null}
-                subjectName={feedbackItem.subject.name}
-                title={feedbackItem.tryoutSession.tryout.title}
-                tryoutId={feedbackItem.tryoutSession.tryout.id}
-              />
+          <div className="mt-5 space-y-4">
+            {feedbackSessions.map((sessionItem) => (
+              <FeedbackSessionHistoryCard key={sessionItem.id} session={sessionItem} />
             ))}
           </div>
         )}
@@ -502,58 +492,73 @@ function FeedbackTextareaField({
   );
 }
 
-function FeedbackHistoryCard({
-  aspect,
-  comment,
-  createdAt,
-  sentiment,
-  subjectName,
-  title,
-  tryoutId,
-}: {
-  aspect: LearningAspect;
-  comment: string;
-  createdAt: Date;
-  sentiment: SentimentLabel | null;
-  subjectName: string;
-  title: string;
-  tryoutId: string;
-}) {
+type FeedbackSessionItem = {
+  id: string;
+  submittedAt: Date | null;
+  score: { toNumber(): number } | number | null;
+  tryout: {
+    id: string;
+    title: string;
+    subject: { name: string };
+  };
+  feedbacks: {
+    aspect: LearningAspect;
+    comment: string;
+    sentiment: { finalLabel: SentimentLabel } | null;
+  }[];
+};
+
+function FeedbackSessionHistoryCard({ session }: { session: FeedbackSessionItem }) {
   return (
-    <article className="rounded-[1.45rem] border border-slate-200/80 bg-slate-50/70 px-4 py-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
-          {subjectName}
-        </span>
-        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-          {feedbackAspectLabelMap[aspect]}
-        </span>
-        {sentiment ? (
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              sentiment === SentimentLabel.POSITIF
-                ? "bg-emerald-100 text-emerald-700"
-                : sentiment === SentimentLabel.NEGATIF
-                  ? "bg-rose-100 text-rose-700"
-                  : "bg-slate-200 text-slate-700"
-            }`}
-          >
-            {sentimentLabelMap[sentiment]}
+    <article className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue-700">
+            {session.tryout.subject.name}
           </span>
-        ) : null}
+          <h3 className="text-sm font-semibold text-slate-900">{session.tryout.title}</h3>
+        </div>
+        <div className="flex items-center gap-3">
+          {session.submittedAt && (
+            <span className="text-xs text-slate-400">{formatDate(session.submittedAt)}</span>
+          )}
+          <Link
+            href={`/siswa/tryout/${session.tryout.id}`}
+            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+          >
+            Lihat Tryout
+          </Link>
+        </div>
       </div>
-      <h3 className="mt-3 text-base font-semibold text-slate-950">{title}</h3>
-      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{comment}</p>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
-          {formatDate(createdAt)}
-        </span>
-        <Link
-          href={`/siswa/tryout/${tryoutId}`}
-          className="text-sm font-semibold text-blue-700 transition hover:text-blue-800"
-        >
-          Lihat tryout
-        </Link>
+
+      <div className="divide-y divide-slate-100">
+        {session.feedbacks.map((fb) => (
+          <div key={fb.aspect} className="flex items-start gap-3 px-5 py-3.5">
+            <div className="flex min-w-[110px] items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500">
+                {feedbackAspectLabelMap[fb.aspect]}
+              </span>
+              {fb.sentiment ? (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    fb.sentiment.finalLabel === SentimentLabel.POSITIF
+                      ? "bg-emerald-100 text-emerald-700"
+                      : fb.sentiment.finalLabel === SentimentLabel.NEGATIF
+                        ? "bg-rose-100 text-rose-700"
+                        : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {sentimentLabelMap[fb.sentiment.finalLabel]}
+                </span>
+              ) : (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                  Menunggu
+                </span>
+              )}
+            </div>
+            <p className="flex-1 text-sm leading-6 text-slate-600">{fb.comment}</p>
+          </div>
+        ))}
       </div>
     </article>
   );

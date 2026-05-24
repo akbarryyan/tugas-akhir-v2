@@ -50,8 +50,9 @@ export default async function GuruProfilePage() {
     },
     updatedAt: null,
   };
+  const teacherProfile = profile.teacherProfile ?? { nip: null, subjectTeachers: [] };
   const initial = profile.name.slice(0, 1).toUpperCase();
-  const subjects = profile.teacherProfile.subjectTeachers.map((item) => item.subject);
+  const subjects = teacherProfile.subjectTeachers.map((item) => item.subject);
 
   return (
     <div className="space-y-5">
@@ -86,7 +87,7 @@ export default async function GuruProfilePage() {
             />
             <ProfileMetaRow
               label="NIP"
-              value={profile.teacherProfile.nip ?? "-"}
+              value={teacherProfile.nip ?? "-"}
             />
             <ProfileMetaRow
               label="Terdaftar"
@@ -124,7 +125,7 @@ export default async function GuruProfilePage() {
               />
               <InfoCard
                 label="NIP"
-                value={profile.teacherProfile.nip ?? "-"}
+                value={teacherProfile.nip ?? "-"}
               />
               <InfoCard
                 label="Jumlah Mapel"
