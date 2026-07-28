@@ -3,7 +3,7 @@ import {
   deleteSubjectAction,
   toggleSubjectStatusAction,
   updateSubjectAction,
-} from "@/app/admin/_actions";
+} from "@/lib/admin/subject-actions";
 import { AdminImportPreview } from "@/app/admin/_import-preview";
 import { LiveFilters } from "@/app/admin/_live-filters";
 import {

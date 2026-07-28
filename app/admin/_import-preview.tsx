@@ -6,7 +6,7 @@ import { useFormStatus } from "react-dom";
 import {
   confirmAdminImportAction,
   previewAdminImportAction,
-} from "@/app/admin/_actions";
+} from "@/lib/admin/import-actions";
 import { useToast } from "@/components/ui/toast-provider";
 
 type ImportType = "guru" | "mapel" | "siswa";

@@ -8,32 +8,25 @@ export default async function AdminPage() {
     studentCount,
     subjectCount,
     assignmentCount,
-    tryoutCount,
-    publishedTryoutCount,
+    tryoutStatusGroups,
     assignedSubjectGroups,
-    analyzedFeedbackCount,
-    manualReviewedSentimentCount,
+    sentimentSourceGroups,
   ] = await Promise.all([
     prisma.teacherProfile.count(),
     prisma.studentProfile.count(),
     prisma.subject.count(),
     prisma.subjectTeacher.count(),
-    prisma.tryout.count(),
-    prisma.tryout.count({
-      where: {
-        isPublished: true,
-      },
-    }),
-    prisma.subjectTeacher.groupBy({
-      by: ["subjectId"],
-    }),
-    prisma.sentimentAnalysis.count(),
-    prisma.sentimentAnalysis.count({
-      where: {
-        labelSource: "MANUAL",
-      },
-    }),
+    prisma.tryout.groupBy({ by: ["isPublished"], _count: { _all: true } }),
+    prisma.subjectTeacher.groupBy({ by: ["subjectId"] }),
+    prisma.sentimentAnalysis.groupBy({ by: ["labelSource"], _count: { _all: true } }),
   ]);
+
+  const tryoutCount = tryoutStatusGroups.reduce((sum, g) => sum + g._count._all, 0);
+  const publishedTryoutCount =
+    tryoutStatusGroups.find((g) => g.isPublished === true)?._count._all ?? 0;
+  const analyzedFeedbackCount = sentimentSourceGroups.reduce((sum, g) => sum + g._count._all, 0);
+  const manualReviewedSentimentCount =
+    sentimentSourceGroups.find((g) => g.labelSource === "MANUAL")?._count._all ?? 0;
 
   const totalManagedUsers = teacherCount + studentCount;
   const draftTryoutCount = Math.max(0, tryoutCount - publishedTryoutCount);

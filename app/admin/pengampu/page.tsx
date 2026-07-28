@@ -1,7 +1,7 @@
 import {
   assignTeacherAction,
   deleteAssignmentAction,
-} from "@/app/admin/_actions";
+} from "@/lib/admin/assignment-actions";
 import { LiveFilters } from "@/app/admin/_live-filters";
 import {
   AdminEmptyState,

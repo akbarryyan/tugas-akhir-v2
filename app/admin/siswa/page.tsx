@@ -2,7 +2,7 @@ import {
   createStudentAction,
   deleteStudentAction,
   updateStudentAction,
-} from "@/app/admin/_actions";
+} from "@/lib/admin/student-actions";
 import { AdminImportPreview } from "@/app/admin/_import-preview";
 import { LiveFilters } from "@/app/admin/_live-filters";
 import {

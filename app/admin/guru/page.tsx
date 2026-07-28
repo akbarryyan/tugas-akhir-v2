@@ -2,7 +2,7 @@ import {
   createTeacherAction,
   deleteTeacherAction,
   updateTeacherAction,
-} from "@/app/admin/_actions";
+} from "@/lib/admin/teacher-actions";
 import { AdminImportPreview } from "@/app/admin/_import-preview";
 import { TeacherFilters } from "@/app/admin/guru/_teacher-filters";
 import {

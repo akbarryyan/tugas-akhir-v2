@@ -5,50 +5,82 @@
 Dokumen acuan fitur:
 - `docs/detail-project.md`
 
-Kondisi repo saat ini:
-- Aplikasi masih berupa scaffold awal Next.js App Router.
-- Dependensi aktif baru mencakup `next`, `react`, `react-dom`, `typescript`, `eslint`, dan `tailwindcss`.
-- Halaman utama masih template bawaan `create-next-app`.
-- Belum ada modul autentikasi, database, dashboard, API internal, maupun service NLP.
+### Status Implementasi
 
-Temuan struktur:
-- `app/layout.tsx`: layout root default.
-- `app/page.tsx`: landing page default Next.js.
-- `app/globals.css`: styling dasar Tailwind v4 + warna default.
-- `package.json`: belum ada `auth.js`, `prisma`, `mysql2`, komponen UI, charting, validasi form, maupun utilitas pendukung.
+**Sudah terimplementasi (Tahap 1-8 selesai):**
 
-Kecocokan dengan kebutuhan TA:
+| Tahap | Fitur | Status |
+|-------|-------|--------|
+| 1 | Fondasi Domain dan Database | Selesai |
+| 2 | Autentikasi dan Otorisasi | Selesai |
+| 3 | Modul Master Data Admin | Selesai |
+| 4 | Modul Bank Soal Guru | Selesai |
+| 5 | Modul Tryout Siswa | Selesai |
+| 6 | Modul Feedback | Selesai |
+| 7 | Integrasi Service NLP | Selesai |
+| 8 | Dashboard dan Analitik | Selesai |
 
-Sudah ada:
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
+### Detail Implementasi
 
-Belum ada:
-- Login dengan role `admin`, `guru`, `siswa`
-- Otorisasi per role
-- Skema database MySQL
-- Prisma ORM
-- CRUD akun guru
-- CRUD akun siswa
-- CRUD mata pelajaran
-- Penugasan guru pengampu
-- CRUD soal tryout
-- Alur pengerjaan tryout dan penilaian
-- Hasil tryout siswa
-- Form feedback setelah tryout
-- Aspek pembelajaran `Materi`, `Penyampaian`, `Soal`
-- Integrasi API NLP
-- Service FastAPI Python
-- Klasifikasi sentimen `Positif`, `Negatif`, `Netral`
-- Dashboard analitik
-- Grafik distribusi sentimen
-- Tabel feedback
-- shadcn/ui
+#### Tahap 1: Fondasi Domain dan Database
+- [x] `prisma/schema.prisma` — 15 model dengan relasi lengkap
+- [x] Koneksi MariaDB via `@prisma/adapter-mariadb`
+- [x] Migration tersimpan di `prisma/migrations/`
+- [x] Seed data awal di `prisma/seed.mjs`
 
-Kesimpulan audit:
-- Repo saat ini belum mengimplementasikan kebutuhan bisnis inti Tugas Akhir.
-- Langkah paling aman adalah memulai dari desain data dan alur domain terlebih dahulu, lalu baru membangun autentikasi, modul, dan integrasi NLP di atas fondasi itu.
+#### Tahap 2: Autentikasi dan Otorisasi
+- [x] NextAuth v4 dengan CredentialsProvider
+- [x] Login admin/guru: email + password (scrypt hash)
+- [x] Login siswa: NISN (tanpa password)
+- [x] JWT strategy dengan role di token
+- [x] `requireRole()` guard di setiap layout
+- [x] Redirect ke dashboard sesuai role
+
+#### Tahap 3: Modul Master Data Admin
+- [x] CRUD guru (create, update, delete, import Excel)
+- [x] CRUD siswa (create, update, delete, import Excel)
+- [x] CRUD mata pelajaran (create, update, delete, toggle status, import Excel)
+- [x] Assignment guru pengampu ke mata pelajaran
+- [x] Preview sebelum import Excel (validasi duplikat, format)
+- [x] Audit log aktivitas admin
+
+#### Tahap 4: Modul Bank Soal Guru
+- [x] Guru melihat mapel yang diampu
+- [x] CRUD soal per mapel (pilihan ganda A/B/C/D)
+- [x] Bank soal (kumpulan soal)
+
+#### Tahap 5: Modul Tryout Siswa
+- [x] Guru buat tryout dari bank soal
+- [x] Publish tryout
+- [x] Siswa lihat daftar tryout tersedia
+- [x] Siswa kerjakan tryout (timer)
+- [x] Submit jawaban → skor otomatis
+- [x] Histori tryout (TryoutSession + TryoutAnswer)
+
+#### Tahap 6: Modul Feedback
+- [x] 3 aspek wajib: MATERI, PENYAMPAIAN, SOAL
+- [x] Form feedback setelah submit tryout
+- [x] Constraint: 1 feedback per aspek per session
+
+#### Tahap 7: Integrasi Service NLP
+- [x] FastAPI service terpisah (`sentiment-analysis-service/`)
+- [x] Endpoint `POST /predict` — klasifikasi sentimen
+- [x] Preprocessing: Sastrawi (stopword + stemming), keep negasi
+- [x] Pipeline: TF-IDF + MultinomialNB
+- [x] Integrasi dari Next.js ke FastAPI via HTTP
+- [x] Penyimpanan hasil analisis ke `SentimentAnalysis`
+- [x] Review manual (admin/guru bisa override label)
+- [x] Reanalyze massal dan per-item
+- [x] Export dataset untuk training
+- [x] Training script dengan auto-download dari admin export
+
+#### Tahap 8: Dashboard dan Analitik
+- [x] Dashboard admin global (statistik, cakupan pengampu, status tryout)
+- [x] Dashboard guru per mata pelajaran
+- [x] Review sentimen per mapel dan aspek
+- [x] Tabel feedback
+
+---
 
 ## 2. Rancangan Domain Sistem
 
@@ -69,202 +101,199 @@ Sistem menggunakan autentikasi campuran:
 Catatan:
 - Siswa tidak melalui proses registrasi mandiri.
 - Akun siswa disiapkan oleh admin dari data master siswa.
-- Karena metode login berbeda antar role, tabel `User` perlu mendukung field autentikasi yang bersifat opsional tergantung role.
+- Password di-hash dengan `scrypt` (Node.js crypto), bukan bcrypt.
 
 ### Entitas Inti
 
 #### 1. User
 Menyimpan akun login untuk semua role.
 
-Field minimum:
-- `id`
+Field:
+- `id` (cuid)
 - `name`
-- `email` opsional, dipakai untuk admin dan guru
-- `passwordHash` opsional, dipakai untuk admin dan guru
-- `role`
-- `authMethod`
+- `email` (opsional, dipakai untuk admin dan guru)
+- `avatarUrl` (opsional)
+- `passwordHash` (opsional, dipakai untuk admin dan guru)
+- `role` (enum: ADMIN, GURU, SISWA)
+- `authMethod` (enum: EMAIL_PASSWORD, NISN)
 - `createdAt`
 - `updatedAt`
-
-Catatan:
-- Untuk implementasi awal, akun bisa disatukan dalam satu tabel `User`.
-- Jika nanti diperlukan data akademik yang lebih spesifik, gunakan profil turunan seperti `TeacherProfile` dan `StudentProfile`.
-- Kombinasi yang disarankan:
-  - `ADMIN` dan `GURU` memakai `authMethod = EMAIL_PASSWORD`
-  - `SISWA` memakai `authMethod = NISN`
 
 #### 2. TeacherProfile
 Menyimpan data tambahan guru.
 
-Field minimum:
+Field:
 - `id`
-- `userId`
-- `nip` atau identifier guru
+- `userId` (unique)
+- `nip` (unique)
 - `createdAt`
 - `updatedAt`
 
 #### 3. StudentProfile
 Menyimpan data tambahan siswa.
 
-Field minimum:
+Field:
 - `id`
-- `userId`
-- `nisn`
+- `userId` (unique)
+- `nisn` (unique)
 - `className`
 - `createdAt`
 - `updatedAt`
 
-Catatan:
-- `nisn` menjadi identifier login siswa.
-- Jika nanti sekolah juga butuh `NIS` internal, field itu bisa ditambahkan terpisah dari `nisn`.
-
 #### 4. Subject
 Mata pelajaran tryout.
 
-Field minimum:
+Field:
 - `id`
-- `name`
-- `description`
-- `isActive`
+- `name` (unique)
+- `description` (opsional, Text)
+- `isActive` (default: true)
 - `createdAt`
 - `updatedAt`
 
 #### 5. SubjectTeacher
 Relasi guru pengampu ke mata pelajaran.
 
-Field minimum:
+Field:
 - `id`
 - `subjectId`
 - `teacherId`
 - `createdAt`
 
-Catatan:
-- Struktur ini mendukung kemungkinan satu mapel diajar lebih dari satu guru.
+Constraint: `@@unique([subjectId, teacherId])`
 
 #### 6. Question
 Soal tryout per mata pelajaran.
 
-Field minimum:
+Field:
 - `id`
 - `subjectId`
 - `createdByTeacherId`
-- `questionText`
-- `optionA`
-- `optionB`
-- `optionC`
-- `optionD`
-- `correctOption`
-- `explanation` opsional
-- `isActive`
+- `questionText` (Text)
+- `optionA` (Text)
+- `optionB` (Text)
+- `optionC` (Text)
+- `optionD` (Text)
+- `correctOption` (enum: A, B, C, D)
+- `explanation` (opsional, Text)
+- `isActive` (default: true)
 - `createdAt`
 - `updatedAt`
 
-Catatan:
-- Jika nanti ingin tipe soal lebih fleksibel, opsi jawaban bisa dipisah ke tabel `QuestionOption`.
-- Untuk tahap TA, model pilihan ganda sederhana sudah cukup.
+#### 7. BankSoal
+Kumpulan soal.
 
-#### 7. Tryout
-Mewakili satu paket tryout yang dibuat untuk mata pelajaran tertentu.
-
-Field minimum:
+Field:
 - `id`
 - `subjectId`
-- `createdByTeacherId` opsional
+- `createdByTeacherId`
 - `title`
-- `description` opsional
-- `isPublished`
-- `durationMinutes` opsional
+- `description` (opsional, Text)
+- `isActive` (default: true)
 - `createdAt`
 - `updatedAt`
 
-Catatan:
-- Satu mata pelajaran dapat memiliki banyak tryout.
-- Entitas ini menjadi kepala utama untuk paket tryout seperti `Latihan 1`, `Simulasi`, atau `Paket A`.
+#### 8. BankSoalQuestion
+Relasi bank soal ke soal.
 
-#### 8. TryoutQuestion
-Relasi soal yang dipakai dalam satu tryout.
+Field:
+- `id`
+- `bankSoalId`
+- `questionId`
+- `orderNumber`
 
-Field minimum:
+Constraint: `@@unique([bankSoalId, questionId])`, `@@unique([bankSoalId, orderNumber])`
+
+#### 9. Tryout
+Paket tryout.
+
+Field:
+- `id`
+- `subjectId`
+- `bankSoalId` (opsional)
+- `createdByTeacherId` (opsional)
+- `title`
+- `description` (opsional, Text)
+- `isPublished` (default: false)
+- `durationMinutes` (opsional)
+- `createdAt`
+- `updatedAt`
+
+#### 10. TryoutQuestion
+Relasi tryout ke soal.
+
+Field:
 - `id`
 - `tryoutId`
 - `questionId`
 - `orderNumber`
 
-Catatan:
-- Tabel ini dipakai agar satu tryout bisa memiliki banyak soal.
-- Soal dari bank soal dapat dipakai kembali di tryout yang berbeda.
+Constraint: `@@unique([tryoutId, questionId])`, `@@unique([tryoutId, orderNumber])`
 
-#### 9. TryoutSession
-Mewakili satu percobaan tryout siswa pada satu paket tryout.
+#### 11. TryoutSession
+Sesi pengerjaan siswa.
 
-Field minimum:
+Field:
 - `id`
 - `studentId`
 - `tryoutId`
-- `status` (`IN_PROGRESS`, `SUBMITTED`, `GRADED`)
+- `status` (enum: IN_PROGRESS, SUBMITTED, GRADED; default: IN_PROGRESS)
 - `startedAt`
-- `submittedAt` opsional
-- `score` opsional
-- `totalQuestions`
-- `correctAnswers`
+- `submittedAt` (opsional)
+- `score` (opsional, Decimal(5,2))
+- `totalQuestions` (default: 0)
+- `correctAnswers` (default: 0)
 - `createdAt`
 - `updatedAt`
 
-Catatan:
-- Entitas ini penting agar histori pengerjaan siswa tersimpan rapi.
+#### 12. TryoutAnswer
+Jawaban per soal.
 
-#### 10. TryoutAnswer
-Jawaban siswa per soal pada satu sesi tryout.
-
-Field minimum:
+Field:
 - `id`
 - `tryoutSessionId`
 - `questionId`
-- `selectedOption`
+- `selectedOption` (enum: A, B, C, D)
 - `isCorrect`
 - `answeredAt`
 
-#### 11. LearningAspect
-Untuk aspek pembelajaran feedback.
+Constraint: `@@unique([tryoutSessionId, questionId])`
 
-Opsi awal:
-- `MATERI`
-- `PENYAMPAIAN`
-- `SOAL`
-
-Catatan:
-- Bisa berupa enum Prisma, tidak harus tabel terpisah.
-
-#### 12. Feedback
+#### 13. Feedback
 Umpan balik siswa setelah tryout.
 
-Field minimum:
+Field:
 - `id`
 - `studentId`
 - `subjectId`
 - `tryoutSessionId`
-- `aspect`
-- `comment`
+- `aspect` (enum: MATERI, PENYAMPAIAN, SOAL)
+- `comment` (Text)
 - `createdAt`
 
-Catatan:
-- Satu `TryoutSession` dapat memiliki lebih dari satu feedback jika siswa diminta menilai beberapa aspek dalam entri terpisah.
-- Jika ingin satu form berisi banyak aspek sekaligus, maka pisahkan menjadi `FeedbackSubmission` dan `FeedbackItem`. Untuk tahap awal, model satu baris per aspek lebih sederhana.
+Constraint: `@@unique([tryoutSessionId, aspect])`
 
-#### 13. SentimentAnalysis
-Hasil klasifikasi sentimen dari komentar feedback.
+#### 14. SentimentAnalysis
+Hasil klasifikasi sentimen.
 
-Field minimum:
+Field:
 - `id`
-- `feedbackId`
-- `label` (`POSITIF`, `NEGATIF`, `NETRAL`)
-- `confidence` opsional
-- `preprocessedText` opsional
-- `modelVersion` opsional
+- `feedbackId` (unique)
+- `autoLabel` (enum: POSITIF, NEGATIF, NETRAL)
+- `autoConfidence` (opsional, Decimal(5,4))
+- `autoMethod` (enum: LEXICON, NAIVE_BAYES)
+- `manualLabel` (opsional, enum)
+- `finalLabel` (enum)
+- `labelSource` (enum: AUTO, MANUAL)
+- `preprocessedText` (opsional, Text)
+- `modelVersion` (opsional)
+- `reviewedByUserId` (opsional)
+- `reviewedAt` (opsional)
+- `reviewNotes` (opsional, Text)
 - `analyzedAt`
+- `updatedAt`
 
-Catatan:
-- Memisahkan hasil analisis dari tabel `Feedback` memberi ruang untuk audit model dan retraining di masa depan.
+---
 
 ## 3. Relasi Data yang Disarankan
 
@@ -287,12 +316,12 @@ Relasi inti:
 
 ### Alur siswa
 1. Siswa login melalui `User`.
-2. Siswa memilih `Tryout` yang tersedia.
+2. Siswa memilih `Tryout` yang tersedia (published).
 3. Sistem membuat `TryoutSession`.
 4. Sistem mengambil daftar soal dari `TryoutQuestion`, lalu tiap jawaban siswa disimpan ke `TryoutAnswer`.
 5. Saat submit, sistem menghitung nilai dari `TryoutAnswer`, lalu memperbarui `TryoutSession`.
-6. Setelah itu siswa mengirim `Feedback`.
-7. Komentar feedback dikirim ke service NLP.
+6. Setelah itu siswa mengirim 3 `Feedback` (MATERI, PENYAMPAIAN, SOAL).
+7. Komentar feedback dikirim ke service NLP (`/predict`).
 8. Hasil klasifikasi disimpan ke `SentimentAnalysis`.
 
 ### Alur guru
@@ -301,173 +330,200 @@ Relasi inti:
 3. Guru CRUD `Question` pada mata pelajaran yang diampu.
 4. Guru menyusun `Tryout` dan memilih soal melalui `TryoutQuestion`.
 5. Guru melihat `TryoutSession`, `Feedback`, dan `SentimentAnalysis` untuk tryout/mapelnya.
+6. Guru bisa review manual sentimen pada mapel yang diampu.
 
 ### Alur admin
 1. Admin login.
 2. Admin mengelola `User`, `TeacherProfile`, `StudentProfile`, `Subject`, dan `SubjectTeacher`.
 3. Admin melihat seluruh data tryout, feedback, dan dashboard agregat.
+4. Admin bisa review/override sentimen, reanalyze, dan export dataset.
+5. Semua aktivitas admin tercatat di audit log.
 
-## 5. Struktur Folder Aplikasi yang Disarankan
+## 5. Struktur Folder Aplikasi
 
-Berikut struktur yang cocok untuk App Router dan domain proyek ini:
+Struktur aktual implementasi:
 
 ```text
 app/
-  (public)/
-    login/
-      page.tsx
-  (dashboard)/
-    admin/
-      page.tsx
-      users/
-      subjects/
-      teachers/
-      feedback/
-      analytics/
-    guru/
-      page.tsx
-      questions/
-      results/
-      feedback/
-      analytics/
-    siswa/
-      page.tsx
-      subjects/
-      tryout/
-      results/
-      feedback/
-  api/
-    auth/
-    nlp/
-lib/
-  auth/
-  db/
-  nlp/
-  validations/
-  utils/
+  admin/
+    guru/               # CRUD guru
+    siswa/              # CRUD siswa
+    mapel/              # CRUD mata pelajaran
+    pengampu/           # Assignment guru → mapel
+    tryout/             # Monitoring tryout
+    feedback/           # Review sentimen + export
+    aktivitas/          # Audit log
+    import-template/
+    profile/
+    _actions.ts         # Server actions (CRUD + import)
+    _components.tsx
+    _import-preview.tsx
+    _live-filters.tsx
+    _sentiment-charts.tsx
+    layout.tsx
+    page.tsx
+  guru/
+    bank-soal/          # Bank soal
+    soal/               # CRUD soal
+    tryout/             # Kelola tryout
+    feedback/           # Lihat feedback
+    profile/
+    layout.tsx
+    page.tsx
+  siswa/
+    tryout/             # Kerjakan tryout
+    hasil/              # Hasil tryout
+    tanggapan/          # Isi feedback
+    progres/            # Progres belajar
+    pengaturan/
+    layout.tsx
+    page.tsx
+  login/
+    page.tsx
+  api/auth/
+    [...nextauth]/      # NextAuth route
+  layout.tsx
+  page.tsx
 components/
-  ui/
-  layout/
-  forms/
-  charts/
+  auth/                 # Dashboard shell per role
+  ui/                   # Toast, confirm dialog
+lib/
+  auth/                 # options.ts, password.ts, session.ts, redirect.ts
+  db/                   # prisma.ts, mariadb-config.ts
+  nlp/                  # sentiment-analysis.ts (client ke FastAPI)
+  sentiment/            # reanalyze-actions.ts, review-actions.ts
+  admin/                # activity.ts (audit log)
+  weather/              # student-dashboard-weather.ts
+  student-feedback.ts   # Helper aspek feedback
 prisma/
   schema.prisma
-docs/
+  seed.mjs
+  migrations/
+scripts/
+  hash-password.mjs
+types/
+  next-auth.d.ts
 ```
-
-Catatan:
-- Gunakan route group seperti `(public)` dan `(dashboard)` agar URL tetap bersih.
-- Folder non-route internal bisa memakai private folder seperti `_components` bila diperlukan.
 
 ## 6. Roadmap Implementasi Bertahap
 
 ### Tahap 1: Fondasi Domain dan Database
-Target:
-- Menetapkan skema entitas dan relasi.
-- Menambahkan Prisma dan koneksi MySQL.
-- Menyiapkan migration awal.
+**Status: SELESAI**
 
-Output:
-- `prisma/schema.prisma`
-- koneksi database
-- seed awal role dan data dummy dasar
+- [x] Skema entitas dan relasi (15 model)
+- [x] Prisma + MariaDB adapter
+- [x] Migration awal
+- [x] Seed data awal
 
 ### Tahap 2: Autentikasi dan Otorisasi
-Target:
-- Menambahkan autentikasi campuran.
-- Menetapkan guard berdasarkan role.
-- Membuat alur login dan redirect dashboard sesuai role.
+**Status: SELESAI**
 
-Output:
-- login admin dan guru via email/password berfungsi
-- login siswa via NISN berfungsi
-- session tersedia di server
-- akses per role terbatas
+- [x] Autentikasi campuran (email+password, NISN)
+- [x] Guard berdasarkan role (`requireRole()`)
+- [x] Alur login dan redirect dashboard sesuai role
+- [x] JWT strategy dengan role di token
 
 ### Tahap 3: Modul Master Data Admin
-Target:
-- CRUD guru
-- CRUD siswa
-- CRUD mata pelajaran
-- assignment guru pengampu
+**Status: SELESAI**
 
-Output:
-- admin dapat mengelola seluruh data master
+- [x] CRUD guru (manual + import Excel)
+- [x] CRUD siswa (manual + import Excel)
+- [x] CRUD mata pelajaran (manual + import Excel + toggle status)
+- [x] Assignment guru pengampu
+- [x] Audit log aktivitas
 
 ### Tahap 4: Modul Bank Soal Guru
-Target:
-- guru dapat melihat mapel yang diampu
-- CRUD soal per mapel
+**Status: SELESAI**
 
-Output:
-- bank soal aktif dan siap dipakai tryout
+- [x] Guru melihat mapel yang diampu
+- [x] CRUD soal per mapel
+- [x] Bank soal
 
 ### Tahap 5: Modul Tryout Siswa
-Target:
-- siswa melihat daftar mapel
-- siswa memulai tryout
-- siswa menjawab soal
-- sistem menghitung skor saat submit
+**Status: SELESAI**
 
-Output:
-- alur tryout end-to-end tanpa feedback
+- [x] Siswa melihat daftar tryout
+- [x] Siswa memulai tryout (timer)
+- [x] Siswa menjawab soal
+- [x] Sistem menghitung skor saat submit
 
 ### Tahap 6: Modul Feedback
-Target:
-- siswa wajib mengisi feedback setelah submit tryout
-- aspek pembelajaran tersimpan
-- komentar tersimpan
+**Status: SELESAI**
 
-Output:
-- data feedback siap dianalisis
+- [x] Siswa wajib mengisi 3 feedback setelah submit tryout
+- [x] Aspek pembelajaran tersimpan (MATERI, PENYAMPAIAN, SOAL)
+- [x] Komentar tersimpan
 
 ### Tahap 7: Integrasi Service NLP
-Target:
-- membuat service FastAPI terpisah
-- endpoint klasifikasi sentimen
-- integrasi dari Next.js ke FastAPI
-- penyimpanan hasil analisis
+**Status: SELESAI**
 
-Output:
-- komentar bisa diklasifikasikan ke `POSITIF`, `NEGATIF`, atau `NETRAL`
+- [x] Service FastAPI terpisah
+- [x] Endpoint klasifikasi sentimen (`/predict`)
+- [x] Integrasi dari Next.js ke FastAPI
+- [x] Penyimpanan hasil analisis
+- [x] Review manual sentimen
+- [x] Reanalyze massal/per-item
+- [x] Export dataset + training script
 
 ### Tahap 8: Dashboard dan Analitik
-Target:
-- dashboard admin global
-- dashboard guru per mata pelajaran
-- distribusi sentimen per mapel dan aspek
-- tabel feedback terfilter
+**Status: SELESAI**
 
-Output:
-- insight evaluasi pembelajaran tersedia
+- [x] Dashboard admin global
+- [x] Dashboard guru per mata pelajaran
+- [x] Distribusi sentimen per mapel dan aspek
+- [x] Tabel feedback terfilter
+
+---
 
 ## 7. Prioritas Implementasi Praktis
 
-Urutan kerja yang direkomendasikan:
-1. Finalkan model data
-2. Buat Prisma schema
-3. Pasang Auth.js
-4. Bangun dashboard shell per role
-5. Kerjakan CRUD master data
-6. Kerjakan bank soal
-7. Kerjakan tryout
-8. Kerjakan feedback
-9. Integrasikan NLP
-10. Tambahkan dashboard analitik
+Urutan kerja yang direkomendasikan (sudah selesai):
+1. ~~Finalkan model data~~ ✓
+2. ~~Buat Prisma schema~~ ✓
+3. ~~Pasang Auth.js~~ ✓
+4. ~~Bangun dashboard shell per role~~ ✓
+5. ~~Kerjakan CRUD master data~~ ✓
+6. ~~Kerjakan bank soal~~ ✓
+7. ~~Kerjakan tryout~~ ✓
+8. ~~Kerjakan feedback~~ ✓
+9. ~~Integrasikan NLP~~ ✓
+10. ~~Tambahkan dashboard analitik~~ ✓
 
 ## 8. Risiko Teknis yang Perlu Dijaga
 
-- Jika desain feedback tidak ditetapkan dari awal, dashboard aspek pembelajaran bisa jadi sulit dirapikan.
-- Jika hasil sentimen langsung ditanam di tabel feedback tanpa jejak metadata, evaluasi model akan lebih sulit.
-- Jika role dan relasi guru-mapel tidak dibatasi jelas, otorisasi guru rawan bocor.
-- Jika tryout session tidak dipisahkan dari jawaban, histori dan rekap skor akan sulit dikelola.
+- Jika desain feedback tidak ditetapkan dari awal, dashboard aspek pembelajaran bisa jadi sulit dirapikan. **→ Ditangani: 3 aspek wajib dengan constraint unique per session.**
+- Jika hasil sentimen langsung ditanam di tabel feedback tanpa jejak metadata, evaluasi model akan lebih sulit. **→ Ditangani: SentimentAnalysis terpisah dengan metadata lengkap.**
+- Jika role dan relasi guru-mapel tidak dibatasi jelas, otorisasi guru rawan bocor. **→ Ditangani: requireRole() + filter SubjectTeacher di setiap query guru.**
+- Jika tryout session tidak dipisahkan dari jawaban, histori dan rekap skor akan sulit dikelola. **→ Ditangani: TryoutSession + TryoutAnswer terpisah.**
 
-## 9. Rekomendasi Langkah Berikutnya
+## 9. Area Teknis yang Perlu Perhatian
 
-Langkah coding berikutnya yang paling masuk akal:
-1. Install dependensi inti `prisma`, `@prisma/client`, `mysql2`, `next-auth` atau Auth.js yang sesuai versi proyek.
-2. Buat `prisma/schema.prisma` berdasarkan rancangan entitas di dokumen ini.
-3. Siapkan environment database lokal.
-4. Generate migration awal.
+### Risiko Jika Diubah:
+- `lib/auth/options.ts` — config auth provider. Salah ubah = login rusak
+- `lib/db/prisma.ts` — Prisma singleton. Ubah = connection leak
+- `prisma/schema.prisma` — schema change butuh migration. Cascade delete di banyak relasi
+- `lib/nlp/sentiment-analysis.ts` — bridge ke FastAPI. Service down = feedback gagal
+- `app/admin/_actions.ts` — 1700+ lines, semua CRUD admin. Banyak validation + transaction
+- `lib/sentiment/reanalyze-actions.ts` — reanalyze massal, manual label preservation logic
+- `app/services/preprocessing.py` — negasi word list. Hapus "tidak" = sentimen rusak
+
+### Keterbatasan Saat Ini:
+- Dataset training sangat kecil (hanya bootstrap)
+- Tidak ada test di frontend
+- Backend test minimal (2 test)
+- Tidak ada rate limiting
+- Tidak ada CORS config
+- `AdminActivity` tabel dibuat via raw SQL, bukan Prisma model
+
+## 10. Rekomendasi Pengembangan Selanjutnya
+
+1. **Perbesar dataset training** — kumpulkan feedback siswa real sebanyak mungkin
+2. **Tambah test** — minimal integration test untuk flow critical
+3. **Rate limiting** — tambah middleware untuk API endpoints
+4. **Monitoring** — tambah logging untuk error tracking
+5. **Backup strategy** — database backup otomatis
+6. **Performance** — pagination untuk tabel besar, caching untuk dashboard
+
+---
 
 Dokumen ini dimaksudkan sebagai baseline teknis agar implementasi repo konsisten dengan kebutuhan Tugas Akhir.
