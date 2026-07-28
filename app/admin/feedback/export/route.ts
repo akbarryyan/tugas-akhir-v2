@@ -28,7 +28,7 @@ function escapeCsvValue(value: string) {
 
 function buildCsv(rows: Array<Record<string, string>>) {
   if (rows.length === 0) {
-    return "comment,aspect,subject,label,labelSource\n";
+    return "comment,preprocessedText,aspect,subject,autoLabel,finalLabel,labelSource\n";
   }
 
   const headers = Object.keys(rows[0]);
@@ -86,8 +86,10 @@ export async function GET(request: Request) {
       },
       sentiment: {
         select: {
+          autoLabel: true,
           finalLabel: true,
           labelSource: true,
+          preprocessedText: true,
         },
       },
     },
@@ -100,10 +102,12 @@ export async function GET(request: Request) {
     .filter((feedback) => feedback.sentiment)
     .map((feedback) => ({
       aspect: feedback.aspect,
+      autoLabel: feedback.sentiment?.autoLabel ?? "",
       comment: feedback.comment,
-      label: feedback.sentiment?.finalLabel ?? "",
+      finalLabel: feedback.sentiment?.finalLabel ?? "",
       labelSource:
         feedback.sentiment?.labelSource === LabelSource.MANUAL ? "MANUAL" : "AUTO",
+      preprocessedText: feedback.sentiment?.preprocessedText ?? "",
       subject: feedback.subject.name,
     }));
 
