@@ -1,7 +1,6 @@
 export type SentimentCounts = {
   positif: number;
   negatif: number;
-  netral: number;
 };
 
 export type SentimentRowData = {
@@ -20,7 +19,7 @@ export function SentimentDistributionSection({
 }: {
   data: SentimentChartData;
 }) {
-  const total = data.overall.positif + data.overall.negatif + data.overall.netral;
+  const total = data.overall.positif + data.overall.negatif;
 
   if (total === 0) {
     return (
@@ -60,19 +59,16 @@ function OverallDonut({
   total: number;
 }) {
   const positifPct = total === 0 ? 0 : Math.round((overall.positif / total) * 100);
-  const negatifPct = total === 0 ? 0 : Math.round((overall.negatif / total) * 100);
-  const netralPct = Math.max(0, 100 - positifPct - negatifPct);
+  const negatifPct = Math.max(0, 100 - positifPct);
 
   const radius = 68;
   const circumference = 2 * Math.PI * radius;
 
   const positifDash = (overall.positif / total) * circumference;
-  const negatifDash = (overall.negatif / total) * circumference;
-  const netralDash = circumference - positifDash - negatifDash;
+  const negatifDash = circumference - positifDash;
 
   const positifOffset = 0;
   const negatifOffset = -positifDash;
-  const netralOffset = -(positifDash + negatifDash);
 
   return (
     <div className="rounded-[1.6rem] border border-slate-200/80 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
@@ -118,19 +114,6 @@ function OverallDonut({
                 strokeLinecap="butt"
               />
             )}
-            {netralDash > 1 && (
-              <circle
-                cx="80"
-                cy="80"
-                r={radius}
-                fill="none"
-                stroke="#f59e0b"
-                strokeWidth="18"
-                strokeDasharray={`${netralDash} ${circumference}`}
-                strokeDashoffset={netralOffset}
-                strokeLinecap="butt"
-              />
-            )}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <p className="text-2xl font-semibold tracking-tight text-slate-950">{total}</p>
@@ -151,12 +134,6 @@ function OverallDonut({
           label="Negatif"
           count={overall.negatif}
           percent={negatifPct}
-        />
-        <DonutLegendItem
-          color="bg-amber-400"
-          label="Netral"
-          count={overall.netral}
-          percent={netralPct}
         />
       </div>
     </div>
@@ -209,7 +186,6 @@ function SentimentBarGroup({
         <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
           <LegendDot color="bg-emerald-500" label="Positif" />
           <LegendDot color="bg-rose-500" label="Negatif" />
-          <LegendDot color="bg-amber-400" label="Netral" />
         </div>
       </div>
 
@@ -232,7 +208,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 }
 
 function SentimentStackedBar({ row }: { row: SentimentRowData }) {
-  const total = row.counts.positif + row.counts.negatif + row.counts.netral;
+  const total = row.counts.positif + row.counts.negatif;
 
   if (total === 0) {
     return (
@@ -247,8 +223,7 @@ function SentimentStackedBar({ row }: { row: SentimentRowData }) {
   }
 
   const positifW = Math.round((row.counts.positif / total) * 100);
-  const negatifW = Math.round((row.counts.negatif / total) * 100);
-  const netralW = Math.max(0, 100 - positifW - negatifW);
+  const negatifW = Math.max(0, 100 - positifW);
 
   return (
     <div>
@@ -275,15 +250,6 @@ function SentimentStackedBar({ row }: { row: SentimentRowData }) {
             {negatifW >= 12 ? `${negatifW}%` : ""}
           </div>
         )}
-        {netralW > 0 && (
-          <div
-            className="flex h-full items-center justify-center bg-amber-400 text-[10px] font-semibold text-white"
-            style={{ width: `${netralW}%` }}
-            title={`Netral: ${row.counts.netral}`}
-          >
-            {netralW >= 12 ? `${netralW}%` : ""}
-          </div>
-        )}
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-slate-500">
         <span>
@@ -291,9 +257,6 @@ function SentimentStackedBar({ row }: { row: SentimentRowData }) {
         </span>
         <span>
           <span className="font-semibold text-rose-700">{row.counts.negatif}</span> negatif
-        </span>
-        <span>
-          <span className="font-semibold text-amber-700">{row.counts.netral}</span> netral
         </span>
       </div>
     </div>

@@ -608,26 +608,17 @@ const feedbackTemplates = {
     [LearningAspect.SOAL]:
       "Soal tryout tidak sesuai dengan materi yang diajarkan. Banyak soal yang membingungkan dan tidak relevan dengan pembelajaran.",
   },
-  netral: {
-    [LearningAspect.MATERI]:
-      "Materi cukup baik, namun ada beberapa bagian yang masih perlu penjelasan lebih lanjut agar lebih mudah dipahami.",
-    [LearningAspect.PENYAMPAIAN]:
-      "Penyampaian sudah cukup jelas, namun bisa lebih baik jika disertai lebih banyak contoh dan latihan soal yang beragam.",
-    [LearningAspect.SOAL]:
-      "Soal yang diberikan cukup memadai, meskipun ada beberapa yang tingkat kesulitannya tidak merata sehingga perlu disesuaikan.",
-  },
 };
 
 const labelConfidence = {
   [SentimentLabel.POSITIF]: 0.88,
   [SentimentLabel.NEGATIF]: 0.86,
-  [SentimentLabel.NETRAL]: 0.68,
 };
 
 function makeFeedbackPlan(plan) {
   return Object.entries(plan).map(([aspect, label]) => ({
     aspect,
-    comment: feedbackTemplates[label === SentimentLabel.POSITIF ? "positif" : label === SentimentLabel.NEGATIF ? "negatif" : "netral"][aspect],
+    comment: feedbackTemplates[label === SentimentLabel.POSITIF ? "positif" : "negatif"][aspect],
     confidence: labelConfidence[label],
     label,
   }));
@@ -636,13 +627,14 @@ function makeFeedbackPlan(plan) {
 // ─── Session Plans ────────────────────────────────────────────────────────────
 
 /*
-  Distribution yang dihasilkan (total 24 sentimen, 8 sesi × 3 aspek):
+  Distribution yang dihasilkan (total 24 sentimen, 8 sesi × 3 aspek,
+  klasifikasi biner positif/negatif):
 
-  MATERI:      5 Positif, 2 Negatif, 1 Netral
-  PENYAMPAIAN: 5 Positif, 1 Negatif, 2 Netral
-  SOAL:        3 Positif, 2 Negatif, 3 Netral
-  ──────────────────────────────────────────
-  TOTAL:       13 Positif, 5 Negatif, 6 Netral
+  MATERI:      6 Positif, 2 Negatif
+  PENYAMPAIAN: 6 Positif, 2 Negatif
+  SOAL:        5 Positif, 3 Negatif
+  ──────────────────────────────────
+  TOTAL:       17 Positif, 7 Negatif
 */
 const sessionPlans = [
   {
@@ -651,7 +643,7 @@ const sessionPlans = [
     feedbackPlan: {
       [LearningAspect.MATERI]: SentimentLabel.POSITIF,
       [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
-      [LearningAspect.SOAL]: SentimentLabel.NETRAL,
+      [LearningAspect.SOAL]: SentimentLabel.POSITIF,
     },
   },
   {
@@ -659,26 +651,26 @@ const sessionPlans = [
     subject: "agama",
     feedbackPlan: {
       [LearningAspect.MATERI]: SentimentLabel.NEGATIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.NETRAL,
-      [LearningAspect.SOAL]: SentimentLabel.NEGATIF,
-    },
-  },
-  {
-    student: "dewi",
-    subject: "agama",
-    feedbackPlan: {
-      [LearningAspect.MATERI]: SentimentLabel.POSITIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
-      [LearningAspect.SOAL]: SentimentLabel.POSITIF,
-    },
-  },
-  {
-    student: "aulia",
-    subject: "matematika",
-    feedbackPlan: {
-      [LearningAspect.MATERI]: SentimentLabel.NETRAL,
       [LearningAspect.PENYAMPAIAN]: SentimentLabel.NEGATIF,
-      [LearningAspect.SOAL]: SentimentLabel.NETRAL,
+      [LearningAspect.SOAL]: SentimentLabel.NEGATIF,
+    },
+  },
+  {
+    student: "dewi",
+    subject: "agama",
+    feedbackPlan: {
+      [LearningAspect.MATERI]: SentimentLabel.POSITIF,
+      [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
+      [LearningAspect.SOAL]: SentimentLabel.POSITIF,
+    },
+  },
+  {
+    student: "aulia",
+    subject: "matematika",
+    feedbackPlan: {
+      [LearningAspect.MATERI]: SentimentLabel.POSITIF,
+      [LearningAspect.PENYAMPAIAN]: SentimentLabel.NEGATIF,
+      [LearningAspect.SOAL]: SentimentLabel.NEGATIF,
     },
   },
   {
@@ -704,7 +696,7 @@ const sessionPlans = [
     subject: "bahasaIndonesia",
     feedbackPlan: {
       [LearningAspect.MATERI]: SentimentLabel.POSITIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.NETRAL,
+      [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
       [LearningAspect.SOAL]: SentimentLabel.POSITIF,
     },
   },
@@ -714,7 +706,7 @@ const sessionPlans = [
     feedbackPlan: {
       [LearningAspect.MATERI]: SentimentLabel.POSITIF,
       [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
-      [LearningAspect.SOAL]: SentimentLabel.NETRAL,
+      [LearningAspect.SOAL]: SentimentLabel.POSITIF,
     },
   },
 ];

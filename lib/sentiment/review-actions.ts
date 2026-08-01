@@ -10,7 +10,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 const sentimentReviewSchema = z.object({
-  manualLabel: z.enum([SentimentLabel.POSITIF, SentimentLabel.NEGATIF, SentimentLabel.NETRAL]).optional(),
+  manualLabel: z.enum([SentimentLabel.POSITIF, SentimentLabel.NEGATIF]).optional(),
   redirectTo: z.string().trim().min(1).default("/admin/feedback"),
   reviewNotes: z.string().trim().max(500, "Catatan review maksimal 500 karakter.").optional(),
   sentimentId: z.string().trim().min(1, "Analisis sentimen tidak valid."),

@@ -68,7 +68,7 @@ function makeSentiment(overrides: Partial<{
 }> = {}) {
   return {
     id: "sentiment-1",
-    autoLabel: SentimentLabel.NETRAL,
+    autoLabel: SentimentLabel.NEGATIF,
     feedbackId: "feedback-1",
     feedback: {
       aspect: "MATERI",
@@ -244,7 +244,7 @@ describe("reviewSentimentAction — manual override", () => {
     await reviewSentimentAction(
       makeFormData({
         sentimentId: "sent-1",
-        manualLabel: "NETRAL",
+        manualLabel: "NEGATIF",
       }),
     ).catch(() => {});
 

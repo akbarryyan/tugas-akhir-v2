@@ -35,11 +35,7 @@ function coerceSentimentLabel(value: string | undefined): SentimentLabel {
     return SentimentLabel.POSITIF;
   }
 
-  if (normalized === SentimentLabel.NEGATIF) {
-    return SentimentLabel.NEGATIF;
-  }
-
-  return SentimentLabel.NETRAL;
+  return SentimentLabel.NEGATIF;
 }
 
 function coerceAutoMethod(value: string | undefined): AutoMethod {

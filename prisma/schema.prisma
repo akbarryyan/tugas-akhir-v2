@@ -39,7 +39,6 @@ enum LearningAspect {
 enum SentimentLabel {
   POSITIF
   NEGATIF
-  NETRAL
 }
 
 enum LabelSource {

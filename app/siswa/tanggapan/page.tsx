@@ -567,7 +567,6 @@ function FeedbackSessionHistoryCard({ session }: { session: FeedbackSessionItem 
 const sentimentLabelMap: Record<SentimentLabel, string> = {
   [SentimentLabel.POSITIF]: "Positif",
   [SentimentLabel.NEGATIF]: "Negatif",
-  [SentimentLabel.NETRAL]: "Netral",
 };
 
 function FeedbackMetricIcon() {

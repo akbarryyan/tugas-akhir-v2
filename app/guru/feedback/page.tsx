@@ -396,7 +396,6 @@ function ReviewFeedbackCard({ feedback, redirectTo }: ReviewFeedbackCardProps) {
                 <option value="">Gunakan label otomatis</option>
                 <option value={SentimentLabel.POSITIF}>Positif</option>
                 <option value={SentimentLabel.NEGATIF}>Negatif</option>
-                <option value={SentimentLabel.NETRAL}>Netral</option>
               </select>
             </label>
 
@@ -406,7 +405,7 @@ function ReviewFeedbackCard({ feedback, redirectTo }: ReviewFeedbackCardProps) {
                 name="reviewNotes"
                 defaultValue={feedback.sentiment.reviewNotes ?? ""}
                 rows={3}
-                placeholder="Opsional, misalnya: komentar cenderung campuran sehingga lebih tepat netral."
+                placeholder="Opsional, misalnya: komentar bernada campuran namun secara keseluruhan cenderung negatif."
                 className="rounded-[0.9rem] border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-700 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
               />
             </label>
@@ -513,7 +512,6 @@ function Pill({
 const sentimentLabelMap: Record<SentimentLabel, string> = {
   [SentimentLabel.POSITIF]: "Positif",
   [SentimentLabel.NEGATIF]: "Negatif",
-  [SentimentLabel.NETRAL]: "Netral",
 };
 
 function formatDateTime(date: Date) {
@@ -541,9 +539,9 @@ type SentimentStatRow = {
 };
 
 function buildSentimentChartData(rows: SentimentStatRow[]): SentimentChartData {
-  const overall = { positif: 0, negatif: 0, netral: 0 };
-  const aspectMap = new Map<LearningAspect, { positif: number; negatif: number; netral: number }>();
-  const subjectMap = new Map<string, { name: string; positif: number; negatif: number; netral: number }>();
+  const overall = { positif: 0, negatif: 0 };
+  const aspectMap = new Map<LearningAspect, { positif: number; negatif: number }>();
+  const subjectMap = new Map<string, { name: string; positif: number; negatif: number }>();
 
   for (const row of rows) {
     const label = row.finalLabel;
@@ -552,33 +550,30 @@ function buildSentimentChartData(rows: SentimentStatRow[]): SentimentChartData {
     const subjectName = row.feedback.subject.name;
 
     if (label === SentimentLabel.POSITIF) overall.positif++;
-    else if (label === SentimentLabel.NEGATIF) overall.negatif++;
-    else overall.netral++;
+    else overall.negatif++;
 
-    if (!aspectMap.has(aspect)) aspectMap.set(aspect, { positif: 0, negatif: 0, netral: 0 });
+    if (!aspectMap.has(aspect)) aspectMap.set(aspect, { positif: 0, negatif: 0 });
     const ac = aspectMap.get(aspect)!;
     if (label === SentimentLabel.POSITIF) ac.positif++;
-    else if (label === SentimentLabel.NEGATIF) ac.negatif++;
-    else ac.netral++;
+    else ac.negatif++;
 
-    if (!subjectMap.has(subjectId)) subjectMap.set(subjectId, { name: subjectName, positif: 0, negatif: 0, netral: 0 });
+    if (!subjectMap.has(subjectId)) subjectMap.set(subjectId, { name: subjectName, positif: 0, negatif: 0 });
     const sc = subjectMap.get(subjectId)!;
     if (label === SentimentLabel.POSITIF) sc.positif++;
-    else if (label === SentimentLabel.NEGATIF) sc.negatif++;
-    else sc.netral++;
+    else sc.negatif++;
   }
 
   const byAspect = ([LearningAspect.MATERI, LearningAspect.PENYAMPAIAN, LearningAspect.SOAL] as const).map(
     (aspect) => {
-      const counts = aspectMap.get(aspect) ?? { positif: 0, negatif: 0, netral: 0 };
+      const counts = aspectMap.get(aspect) ?? { positif: 0, negatif: 0 };
       return { label: aspectDisplayMap[aspect], counts };
     },
   );
 
   const bySubject = Array.from(subjectMap.values())
-    .sort((a, b) => (b.positif + b.negatif + b.netral) - (a.positif + a.negatif + a.netral))
+    .sort((a, b) => (b.positif + b.negatif) - (a.positif + a.negatif))
     .slice(0, 8)
-    .map(({ name, positif, negatif, netral }) => ({ label: name, counts: { positif, negatif, netral } }));
+    .map(({ name, positif, negatif }) => ({ label: name, counts: { positif, negatif } }));
 
   return { overall, byAspect, bySubject };
 }
