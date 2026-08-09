@@ -93,6 +93,7 @@ function buildFeedbackQueryFilter(query: string) {
 
 export async function reanalyzeVisibleSentimentsAction(formData: FormData) {
   const redirectTo = String(formData.get("redirectTo") ?? "/admin/feedback").trim() || "/admin/feedback";
+  let successData: { message: string; redirectTo: string } | null = null;
 
   try {
     const session = await getCurrentSession();
@@ -231,18 +232,22 @@ export async function reanalyzeVisibleSentimentsAction(formData: FormData) {
     revalidatePath("/guru");
     revalidatePath("/siswa/tanggapan");
 
-    redirectWithMessage(
-      parsed.redirectTo,
-      "success",
-      `${updatedCount} data sentimen berhasil diprediksi ulang.`,
-    );
+    successData = {
+      message: `${updatedCount} data sentimen berhasil diprediksi ulang.`,
+      redirectTo: parsed.redirectTo,
+    };
   } catch (error) {
     redirectWithMessage(redirectTo, "error", getErrorMessage(error));
   }
+
+  // redirect() sukses dipanggil di luar try/catch karena di Next.js App Router,
+  // redirect() melempar error internal NEXT_REDIRECT yang akan tertangkap catch jika dipanggil di dalam try.
+  redirectWithMessage(successData!.redirectTo, "success", successData!.message);
 }
 
 export async function reanalyzeSingleSentimentAction(formData: FormData) {
   const redirectTo = String(formData.get("redirectTo") ?? "/admin/feedback").trim() || "/admin/feedback";
+  let successData: { message: string; redirectTo: string } | null = null;
 
   try {
     const session = await getCurrentSession();
@@ -366,8 +371,15 @@ export async function reanalyzeSingleSentimentAction(formData: FormData) {
     revalidatePath("/guru");
     revalidatePath("/siswa/tanggapan");
 
-    redirectWithMessage(parsed.redirectTo, "success", "Data sentimen berhasil diprediksi ulang.");
+    successData = {
+      message: "Data sentimen berhasil diprediksi ulang.",
+      redirectTo: parsed.redirectTo,
+    };
   } catch (error) {
     redirectWithMessage(redirectTo, "error", getErrorMessage(error));
   }
+
+  // redirect() sukses dipanggil di luar try/catch karena di Next.js App Router,
+  // redirect() melempar error internal NEXT_REDIRECT yang akan tertangkap catch jika dipanggil di dalam try.
+  redirectWithMessage(successData!.redirectTo, "success", successData!.message);
 }

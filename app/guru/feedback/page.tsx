@@ -524,12 +524,6 @@ function formatDateTime(date: Date) {
   }).format(date);
 }
 
-const aspectDisplayMap: Record<LearningAspect, string> = {
-  [LearningAspect.MATERI]: "Materi",
-  [LearningAspect.PENYAMPAIAN]: "Penyampaian",
-  [LearningAspect.SOAL]: "Evaluasi Soal",
-};
-
 type SentimentStatRow = {
   finalLabel: SentimentLabel;
   feedback: {
@@ -566,7 +560,7 @@ function buildSentimentChartData(rows: SentimentStatRow[]): SentimentChartData {
   const byAspect = ([LearningAspect.MATERI, LearningAspect.PENYAMPAIAN, LearningAspect.SOAL] as const).map(
     (aspect) => {
       const counts = aspectMap.get(aspect) ?? { positif: 0, negatif: 0 };
-      return { label: aspectDisplayMap[aspect], counts };
+      return { label: feedbackAspectLabelMap[aspect], counts };
     },
   );
 

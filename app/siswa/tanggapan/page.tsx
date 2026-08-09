@@ -155,8 +155,8 @@ export default async function SiswaTanggapanPage({
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
             Setelah menyelesaikan tryout, lengkapi umpan balik tentang proses pembelajaran pada
-            mata pelajaran ini melalui tiga aspek utama: materi, penyampaian, dan evaluasi
-            belajar. Dengan begitu, tindak lanjut pembelajaran di kelas bisa dipahami lebih utuh.
+            mata pelajaran ini melalui tiga aspek utama: materi, penyampaian, dan soal.
+            Dengan begitu, tindak lanjut pembelajaran di kelas bisa dipahami lebih utuh.
           </p>
         </div>
       </section>
@@ -311,9 +311,9 @@ export default async function SiswaTanggapanPage({
                 />
                 <FeedbackTextareaField
                   name="soal"
-                  title="Evaluasi"
-                  description="Berikan tanggapan tentang tugas, latihan, kuis, atau bentuk evaluasi yang diberikan untuk mengukur pemahamanmu."
-                  placeholder="Contoh: Latihan dan tugas yang diberikan cukup membantu, tetapi saya berharap ada pembahasan yang lebih rinci setelah evaluasi..."
+                  title="Soal"
+                  description="Berikan tanggapan tentang soal tryout yang kamu kerjakan: kejelasan petunjuk, tingkat kesulitan, dan kesesuaiannya dengan materi yang diajarkan."
+                  placeholder="Contoh: Soalnya sudah sesuai dengan materi, tetapi beberapa petunjuk pengerjaan menurut saya masih kurang jelas..."
                   defaultValue={defaultCommentsByAspect[LearningAspect.SOAL]}
                 />
               </div>

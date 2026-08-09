@@ -18,7 +18,7 @@ const feedbackFormSchema = z.object({
     .string()
     .trim()
     .min(5, "Tanggapan aspek penyampaian minimal 5 karakter."),
-  soal: z.string().trim().min(5, "Tanggapan aspek evaluasi minimal 5 karakter."),
+  soal: z.string().trim().min(5, "Tanggapan aspek soal minimal 5 karakter."),
   tryoutSessionId: z.string().trim().min(1, "Sesi tryout tidak valid."),
 });
 

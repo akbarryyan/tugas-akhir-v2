@@ -262,7 +262,7 @@ export default async function SiswaTryoutDetailPage({
                   </h2>
                   <p className="mt-2 text-sm leading-7 text-slate-600">
                     Setelah tryout selesai, isi seluruh aspek umpan balik pembelajaran
-                    materi, penyampaian, dan evaluasi pada halaman tanggapan.
+                    materi, penyampaian, dan soal pada halaman tanggapan.
                   </p>
                 </div>
                 <Link

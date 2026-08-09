@@ -12,7 +12,7 @@ Sistem ini merupakan aplikasi berbasis web yang digunakan untuk:
 
 Analisis dilakukan berdasarkan:
 - Mata pelajaran
-- Aspek pembelajaran (Materi, Penyampaian, Evaluasi)
+- Aspek pembelajaran (Materi, Penyampaian, Soal)
 
 ---
 
@@ -129,7 +129,7 @@ Analisis dilakukan berdasarkan:
 - Dashboard: `/siswa`
 - Mengikuti tryout berdasarkan mata pelajaran
 - Melihat hasil tryout dan skor
-- Mengisi 3 umpan balik wajib per tryout (Materi, Penyampaian, Evaluasi)
+- Mengisi 3 umpan balik wajib per tryout (Materi, Penyampaian, Soal)
 - Melihat progres belajar
 
 ---
@@ -147,7 +147,7 @@ Analisis dilakukan berdasarkan:
 3. Siswa mengerjakan soal (dengan timer)
 4. Siswa submit jawaban
 5. Sistem menghitung skor otomatis
-6. Siswa mengisi 3 feedback wajib (Materi, Penyampaian, Evaluasi)
+6. Siswa mengisi 3 feedback wajib (Materi, Penyampaian, Soal)
 7. Feedback dikirim ke service NLP untuk analisis sentimen
 8. Hasil sentimen tersimpan di database
 

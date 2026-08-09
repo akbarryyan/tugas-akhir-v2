@@ -184,7 +184,7 @@ Password di-hash dengan `scrypt` (Node.js crypto). Siswa tidak punya password â€
 - Lihat daftar tryout tersedia
 - Kerjakan tryout (timer, pilihan ganda)
 - Lihat hasil & skor
-- Isi 3 feedback wajib (Materi, Penyampaian, Evaluasi) per tryout
+- Isi 3 feedback wajib (Materi, Penyampaian, Soal) per tryout
 
 ## Database Schema
 

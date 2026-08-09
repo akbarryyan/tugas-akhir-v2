@@ -2,7 +2,7 @@
 
 import { LabelSource, Prisma, Role, SentimentLabel } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 
 import { recordAdminActivity } from "@/lib/admin/activity";
@@ -21,12 +21,28 @@ function redirectWithMessage(
   type: "error" | "success",
   message: string,
 ) {
-  const params = new URLSearchParams({
-    message,
-    type,
-  });
+  // path bisa sudah membawa query (mis. "/admin/feedback?q=aljabar"), jadi
+  // query lama harus digabung — bukan ditimpa dengan "?" kedua.
+  const [pathname, search = ""] = path.split("?");
+  const params = new URLSearchParams(search);
 
-  redirect(`${path}?${params.toString()}`);
+  params.set("message", message);
+  params.set("type", type);
+
+  redirect(`${pathname}?${params.toString()}`);
+}
+
+// TODO(debug sementara): hapus setelah bug toast "NEXT_REDIRECT" terkonfirmasi beres.
+function debugSentimentAction(stage: string, payload: unknown) {
+  const line = `${new Date().toISOString()} [reviewSentimentAction] ${stage} ${JSON.stringify(payload)}\n`;
+  console.error(line.trim());
+  void import("node:fs").then(({ appendFileSync }) => {
+    try {
+      appendFileSync("/tmp/sentiment-action-debug.log", line);
+    } catch {
+      // abaikan: logging diagnostik tidak boleh menggagalkan aksi
+    }
+  });
 }
 
 function getErrorMessage(error: unknown) {
@@ -47,6 +63,7 @@ function getErrorMessage(error: unknown) {
 
 export async function reviewSentimentAction(formData: FormData) {
   const redirectTo = String(formData.get("redirectTo") ?? "/admin/feedback").trim() || "/admin/feedback";
+  let successData: { message: string; redirectTo: string } | null = null;
 
   try {
     const session = await getCurrentSession();
@@ -169,14 +186,22 @@ export async function reviewSentimentAction(formData: FormData) {
     revalidatePath("/guru");
     revalidatePath("/siswa/tanggapan");
 
-    redirectWithMessage(
-      parsed.redirectTo,
-      "success",
-      hasManualOverride
+    successData = {
+      message: hasManualOverride
         ? "Tinjauan manual sentimen berhasil disimpan."
         : "Label sentimen berhasil dikembalikan ke hasil otomatis.",
-    );
+      redirectTo: parsed.redirectTo,
+    };
   } catch (error) {
+    // Lempar ulang error internal Next.js (NEXT_REDIRECT / notFound) agar tidak
+    // pernah berubah menjadi pesan toast. Wajib di baris pertama catch.
+    unstable_rethrow(error);
+    debugSentimentAction("catch", { message: getErrorMessage(error), redirectTo });
     redirectWithMessage(redirectTo, "error", getErrorMessage(error));
   }
+
+  // redirect() sukses dipanggil di luar try/catch karena di Next.js App Router,
+  // redirect() melempar error internal NEXT_REDIRECT yang akan tertangkap catch jika dipanggil di dalam try.
+  debugSentimentAction("success", successData!);
+  redirectWithMessage(successData!.redirectTo, "success", successData!.message);
 }

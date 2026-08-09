@@ -34,7 +34,11 @@ vi.mock("next/cache", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => {
-    throw new Error(`REDIRECT:${path}`);
+    // Meniru perilaku asli Next.js App Router: redirect() melempar Error
+    // ber-message "NEXT_REDIRECT" dan menaruh tujuannya di properti digest.
+    const error = new Error("NEXT_REDIRECT") as Error & { digest: string };
+    error.digest = `NEXT_REDIRECT;push;${path};307;`;
+    throw error;
   }),
 }));
 
@@ -42,10 +46,16 @@ import { recordAdminActivity } from "@/lib/admin/activity";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { predictSentiment } from "@/lib/nlp/sentiment-analysis";
+import { redirect } from "next/navigation";
 import {
   reanalyzeSingleSentimentAction,
   reanalyzeVisibleSentimentsAction,
 } from "@/lib/sentiment/reanalyze-actions";
+
+function redirectUrl(error: unknown) {
+  const digest = String((error as { digest?: string }).digest ?? "");
+  return digest.split(";").slice(2, -2).join(";");
+}
 
 const mockedFindFirst = vi.mocked(prisma.feedback.findFirst);
 const mockedFindMany = vi.mocked(prisma.feedback.findMany);
@@ -137,8 +147,8 @@ describe("reanalyzeSingleSentimentAction — error paths", () => {
     ).catch((e) => e);
 
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toContain("REDIRECT:");
-    expect((error as Error).message).toContain("type=error");
+    expect((error as Error).message).toBe("NEXT_REDIRECT");
+    expect(redirectUrl(error)).toContain("type=error");
     expect(mockedFindFirst).not.toHaveBeenCalled();
   });
 
@@ -149,7 +159,7 @@ describe("reanalyzeSingleSentimentAction — error paths", () => {
       makeFormData({ feedbackId: "fb-1" }),
     ).catch((e) => e);
 
-    expect((error as Error).message).toContain("tidak+memiliki+akses");
+    expect(redirectUrl(error)).toContain("tidak+memiliki+akses");
     expect(mockedFindFirst).not.toHaveBeenCalled();
   });
 
@@ -161,7 +171,7 @@ describe("reanalyzeSingleSentimentAction — error paths", () => {
       makeFormData({ feedbackId: "missing" }),
     ).catch((e) => e);
 
-    expect((error as Error).message).toContain("tidak+ditemukan");
+    expect(redirectUrl(error)).toContain("tidak+ditemukan");
     expect(mockedPredict).not.toHaveBeenCalled();
   });
 
@@ -175,7 +185,7 @@ describe("reanalyzeSingleSentimentAction — error paths", () => {
       makeFormData({ feedbackId: "fb-1" }),
     ).catch((e) => e);
 
-    expect((error as Error).message).toContain("tidak+ditemukan");
+    expect(redirectUrl(error)).toContain("tidak+ditemukan");
     expect(mockedPredict).not.toHaveBeenCalled();
   });
 
@@ -187,7 +197,7 @@ describe("reanalyzeSingleSentimentAction — error paths", () => {
       makeFormData({ feedbackId: "fb-1" }),
     ).catch((e) => e);
 
-    expect((error as Error).message).toContain("Profil+guru+tidak+ditemukan");
+    expect(redirectUrl(error)).toContain("Profil+guru+tidak+ditemukan");
   });
 
   it("redirects with error when feedbackId is empty (zod)", async () => {
@@ -318,7 +328,7 @@ describe("reanalyzeVisibleSentimentsAction — mass reanalyze", () => {
       makeFormData({}),
     ).catch((e) => e);
 
-    expect((error as Error).message).toContain("ada+data");
+    expect(redirectUrl(error)).toContain("ada+data");
     expect(mockedPredict).not.toHaveBeenCalled();
   });
 
@@ -386,5 +396,44 @@ describe("reanalyzeVisibleSentimentsAction — mass reanalyze", () => {
 
     expect(mockedPredict).toHaveBeenCalledTimes(1);
     expect(mockedUpdate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("reanalyze — jalur sukses", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGetSession.mockResolvedValue(makeSession(Role.ADMIN));
+    mockedPredict.mockResolvedValue(makePrediction());
+    mockedUpdate.mockResolvedValue({} as any);
+    mockedRecordActivity.mockResolvedValue(undefined);
+  });
+
+  it("reanalyze satu data: redirect sukses tidak berubah jadi NEXT_REDIRECT", async () => {
+    mockedFindFirst.mockResolvedValueOnce(
+      makeFeedback({ sentiment: { id: "sent-1", labelSource: LabelSource.AUTO, manualLabel: null } }),
+    );
+
+    const error = await reanalyzeSingleSentimentAction(
+      makeFormData({ feedbackId: "fb-1" }),
+    ).catch((e) => e);
+
+    expect((error as Error).message).toBe("NEXT_REDIRECT");
+    expect(redirectUrl(error)).toContain("type=success");
+    expect(redirectUrl(error)).not.toContain("NEXT_REDIRECT");
+    expect(vi.mocked(redirect)).toHaveBeenCalledTimes(1);
+  });
+
+  it("reanalyze massal: redirect sukses tidak berubah jadi NEXT_REDIRECT", async () => {
+    mockedFindMany.mockResolvedValueOnce([
+      makeFeedback({ id: "fb-1", sentiment: { id: "sent-1", labelSource: LabelSource.AUTO, manualLabel: null } }),
+    ]);
+
+    const error = await reanalyzeVisibleSentimentsAction(
+      makeFormData({}),
+    ).catch((e) => e);
+
+    expect(redirectUrl(error)).toContain("type=success");
+    expect(redirectUrl(error)).not.toContain("NEXT_REDIRECT");
+    expect(vi.mocked(redirect)).toHaveBeenCalledTimes(1);
   });
 });

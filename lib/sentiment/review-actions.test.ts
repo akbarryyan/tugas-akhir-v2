@@ -24,14 +24,30 @@ vi.mock("next/cache", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => {
-    throw new Error(`REDIRECT:${path}`);
+    // Meniru perilaku asli Next.js App Router: redirect() melempar Error
+    // ber-message "NEXT_REDIRECT" dan menaruh tujuannya di properti digest.
+    const error = new Error("NEXT_REDIRECT") as Error & { digest: string };
+    error.digest = `NEXT_REDIRECT;push;${path};307;`;
+    throw error;
+  }),
+  unstable_rethrow: vi.fn((error: unknown) => {
+    const digest = (error as { digest?: unknown }).digest;
+    if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
   }),
 }));
 
 import { recordAdminActivity } from "@/lib/admin/activity";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { redirect } from "next/navigation";
 import { reviewSentimentAction } from "@/lib/sentiment/review-actions";
+
+function redirectUrl(error: unknown) {
+  const digest = String((error as { digest?: string }).digest ?? "");
+  return digest.split(";").slice(2, -2).join(";");
+}
 
 const mockedFindUnique = vi.mocked(prisma.sentimentAnalysis.findUnique);
 const mockedUpdate = vi.mocked(prisma.sentimentAnalysis.update);
@@ -99,7 +115,8 @@ function makeFormData(entries: Record<string, string>) {
 
 function expectRedirect(error: unknown, path: string) {
   expect(error).toBeInstanceOf(Error);
-  expect((error as Error).message).toContain(`REDIRECT:${path}`);
+  expect((error as Error).message).toBe("NEXT_REDIRECT");
+  expect(redirectUrl(error)).toContain(path);
 }
 
 describe("reviewSentimentAction — error paths", () => {
@@ -115,7 +132,7 @@ describe("reviewSentimentAction — error paths", () => {
     ).catch((e) => e);
 
     expectRedirect(error, "/admin/feedback");
-    expect((error as Error).message).toContain("type=error");
+    expect(redirectUrl(error)).toContain("type=error");
     expect(mockedFindUnique).not.toHaveBeenCalled();
   });
 
@@ -127,7 +144,7 @@ describe("reviewSentimentAction — error paths", () => {
     ).catch((e) => e);
 
     expectRedirect(error, "/admin/feedback");
-    expect((error as Error).message).toContain("type=error");
+    expect(redirectUrl(error)).toContain("type=error");
   });
 
   it("redirects with error when role is SISWA", async () => {
@@ -138,7 +155,7 @@ describe("reviewSentimentAction — error paths", () => {
     ).catch((e) => e);
 
     expectRedirect(error, "/admin/feedback");
-    expect((error as Error).message).toContain("tidak+memiliki+akses");
+    expect(redirectUrl(error)).toContain("tidak+memiliki+akses");
     expect(mockedFindUnique).not.toHaveBeenCalled();
   });
 
@@ -151,7 +168,7 @@ describe("reviewSentimentAction — error paths", () => {
     ).catch((e) => e);
 
     expectRedirect(error, "/admin/feedback");
-    expect((error as Error).message).toContain("tidak+ditemukan");
+    expect(redirectUrl(error)).toContain("tidak+ditemukan");
     expect(mockedUpdate).not.toHaveBeenCalled();
   });
 
@@ -176,7 +193,7 @@ describe("reviewSentimentAction — error paths", () => {
     ).catch((e) => e);
 
     expectRedirect(error, "/admin/feedback");
-    expect((error as Error).message).toContain("mata+pelajaran+yang+diampu");
+    expect(redirectUrl(error)).toContain("mata+pelajaran+yang+diampu");
     expect(mockedUpdate).not.toHaveBeenCalled();
   });
 
@@ -362,5 +379,35 @@ describe("reviewSentimentAction — GURU authorized", () => {
     ).catch(() => {});
 
     expect(mockedRecordActivity).not.toHaveBeenCalled();
+  });
+});
+
+describe("reviewSentimentAction — jalur sukses", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGetSession.mockResolvedValue(makeSession(Role.ADMIN));
+    mockedFindUnique.mockResolvedValue(makeSentiment());
+    mockedUpdate.mockResolvedValue({} as any);
+    mockedRecordActivity.mockResolvedValue(undefined);
+  });
+
+  it("redirect sukses tidak boleh tertangkap catch dan berubah jadi NEXT_REDIRECT", async () => {
+    const error = await reviewSentimentAction(
+      makeFormData({ sentimentId: "sent-1", manualLabel: "NEGATIF" }),
+    ).catch((e) => e);
+
+    expectRedirect(error, "/admin/feedback");
+    expect(redirectUrl(error)).toContain("type=success");
+    expect(redirectUrl(error)).not.toContain("NEXT_REDIRECT");
+    expect(vi.mocked(redirect)).toHaveBeenCalledTimes(1);
+  });
+
+  it("redirect sukses saat reset ke label otomatis juga bertipe success", async () => {
+    const error = await reviewSentimentAction(
+      makeFormData({ sentimentId: "sent-1" }),
+    ).catch((e) => e);
+
+    expect(redirectUrl(error)).toContain("type=success");
+    expect(vi.mocked(redirect)).toHaveBeenCalledTimes(1);
   });
 });
