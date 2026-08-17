@@ -18,22 +18,76 @@ import { formatAverageScore, LIKERT_MAX_SCORE } from "@/lib/feedback-likert";
 import { getTotal } from "@/lib/sentiment/aggregate";
 import type { FeedbackReportData, FeedbackReportRow } from "@/lib/sentiment/report";
 
-const COLUMNS = "grid-cols-[minmax(0,1.6fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_minmax(0,0.6fr)]";
+/**
+ * Lebar kolom dibedakan menurut peran: guru tidak butuh kolom Guru karena
+ * seluruh barisnya memang miliknya. Kolom Nilai dan Sentimen diberi lebar tetap
+ * sebab isinya terbatas, sehingga sisa ruang sepenuhnya jatuh ke kolom tanggapan.
+ */
+const COLUMNS_WITH_TEACHER =
+  "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_4.5rem_7.5rem]";
+const COLUMNS_WITHOUT_TEACHER =
+  "grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_4.5rem_7.5rem]";
+
+export function FeedbackReportStats({
+  accent,
+  data,
+}: {
+  accent: "indigo" | "sky";
+  data: FeedbackReportData;
+}) {
+  const total = getTotal(data.counts);
+
+  return (
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <ReportStatCard
+        accent={accent}
+        label="Tanggapan Dianalisis"
+        value={String(total)}
+        helper={
+          data.pendingAnalysisCount > 0
+            ? `${data.pendingAnalysisCount} tanggapan belum teranalisis dan tidak dihitung.`
+            : `Dari total ${data.respondentCount} tanggapan yang masuk.`
+        }
+      />
+      <ReportStatCard
+        accent="emerald"
+        label="Sentimen Positif"
+        value={`${data.percentages.positif}%`}
+        helper={`${data.counts.positif} tanggapan bernada positif.`}
+      />
+      <ReportStatCard
+        accent="rose"
+        label="Sentimen Negatif"
+        value={`${data.percentages.negatif}%`}
+        helper={`${data.counts.negatif} tanggapan bernada negatif.`}
+      />
+      <ReportStatCard
+        accent={accent}
+        label="Rata-rata Penilaian"
+        value={
+          data.likert.overallAverage === null
+            ? "-"
+            : `${formatAverageScore(data.likert.overallAverage)} / ${LIKERT_MAX_SCORE}`
+        }
+        helper={`Dihitung dari ${data.likert.responseCount} jawaban skala.`}
+      />
+    </section>
+  );
+}
 
 export function FeedbackReportView({
-  accent,
   data,
   pathname,
   searchParams,
   showTeacherColumn,
 }: {
-  accent: "indigo" | "sky";
   data: FeedbackReportData;
   pathname: string;
   searchParams: Record<string, string | undefined>;
   showTeacherColumn: boolean;
 }) {
-  const total = getTotal(data.counts);
+  const columns = showTeacherColumn ? COLUMNS_WITH_TEACHER : COLUMNS_WITHOUT_TEACHER;
+  const tableMinWidth = showTeacherColumn ? "min-w-[64rem]" : "min-w-[52rem]";
 
   const chartData: SentimentChartData = {
     overall: data.counts,
@@ -63,41 +117,6 @@ export function FeedbackReportView({
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <ReportStatCard
-          accent={accent}
-          label="Tanggapan Dianalisis"
-          value={String(total)}
-          helper={
-            data.pendingAnalysisCount > 0
-              ? `${data.pendingAnalysisCount} tanggapan belum teranalisis dan tidak dihitung.`
-              : `Dari total ${data.respondentCount} tanggapan yang masuk.`
-          }
-        />
-        <ReportStatCard
-          accent="emerald"
-          label="Sentimen Positif"
-          value={`${data.percentages.positif}%`}
-          helper={`${data.counts.positif} tanggapan bernada positif.`}
-        />
-        <ReportStatCard
-          accent="rose"
-          label="Sentimen Negatif"
-          value={`${data.percentages.negatif}%`}
-          helper={`${data.counts.negatif} tanggapan bernada negatif.`}
-        />
-        <ReportStatCard
-          accent={accent}
-          label="Rata-rata Penilaian"
-          value={
-            data.likert.overallAverage === null
-              ? "-"
-              : `${formatAverageScore(data.likert.overallAverage)} / ${LIKERT_MAX_SCORE}`
-          }
-          helper={`Dihitung dari ${data.likert.responseCount} jawaban skala.`}
-        />
-      </section>
-
       <section className="rounded-[1.05rem] border border-slate-200/80 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-slate-950">Distribusi Sentimen</h2>
@@ -138,67 +157,109 @@ export function FeedbackReportView({
           <AdminEmptyState message="Belum ada tanggapan yang cocok dengan filter ini." />
         ) : (
           <>
-            <DesktopTable minWidthClassName="min-w-[62rem]">
-              <DesktopTableHeaderRow columnsClassName={COLUMNS}>
-                <span>Tanggapan</span>
-                <span>Siswa</span>
-                <span>{showTeacherColumn ? "Guru / Mapel" : "Mata Pelajaran"}</span>
-                <span>Nilai</span>
-                <span>Sentimen</span>
-              </DesktopTableHeaderRow>
-              <DesktopTableBody>
-                {data.rows.map((row) => (
-                  <DesktopTableRow key={row.id} columnsClassName={COLUMNS}>
-                    <div className="min-w-0">
-                      <p className="text-sm leading-6 text-slate-700">{row.comment}</p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {formatDate(row.createdAt)}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-800">
-                        {row.studentName}
-                      </p>
-                      <p className="text-xs text-slate-500">{row.className}</p>
-                    </div>
-                    <div className="min-w-0">
-                      {showTeacherColumn && (
-                        <p className="truncate text-sm font-medium text-slate-800">
-                          {row.teacherName ?? "Belum ditentukan"}
+            {/* Tabel hanya untuk layar lebar; di bawah lg diganti kartu supaya
+                tidak ada dua penyajian data yang sama tampil bersamaan. */}
+            <div className="hidden lg:block">
+              <DesktopTable minWidthClassName={tableMinWidth}>
+                <DesktopTableHeaderRow columnsClassName={columns}>
+                  <span>Tanggapan</span>
+                  <span>Siswa</span>
+                  {showTeacherColumn ? <span>Guru</span> : null}
+                  <span>Mata Pelajaran</span>
+                  <span className="text-right">Nilai</span>
+                  <span>Sentimen</span>
+                </DesktopTableHeaderRow>
+                <DesktopTableBody>
+                  {data.rows.map((row) => (
+                    <DesktopTableRow
+                      key={row.id}
+                      columnsClassName={`${columns} items-start`}
+                    >
+                      <div className="min-w-0">
+                        {/* Dibatasi tiga baris agar tinggi antarbaris tetap rapi;
+                            teks utuh tetap bisa dilihat lewat tooltip. */}
+                        <p
+                          className="line-clamp-3 text-sm leading-6 text-slate-700"
+                          title={row.comment}
+                        >
+                          {row.comment}
                         </p>
-                      )}
-                      <p className="truncate text-xs text-slate-500">{row.subjectName}</p>
-                    </div>
-                    <div className="text-sm font-semibold text-slate-800">
-                      {formatAverageScore(row.averageScore)}
-                    </div>
-                    <div>
-                      <SentimentPill row={row} />
-                    </div>
-                  </DesktopTableRow>
-                ))}
-              </DesktopTableBody>
-            </DesktopTable>
+                        <p className="mt-1.5 text-xs text-slate-400">
+                          {formatDate(row.createdAt)}
+                        </p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-800">
+                          {row.studentName}
+                        </p>
+                        <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          {row.className}
+                        </span>
+                      </div>
+                      {showTeacherColumn ? (
+                        <div className="min-w-0">
+                          <p
+                            className="truncate text-sm text-slate-700"
+                            title={row.teacherName ?? undefined}
+                          >
+                            {row.teacherName ?? "Belum ditentukan"}
+                          </p>
+                        </div>
+                      ) : null}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-slate-700" title={row.subjectName}>
+                          {row.subjectName}
+                        </p>
+                      </div>
+                      <div className="text-right text-sm font-semibold tabular-nums text-slate-800">
+                        {formatAverageScore(row.averageScore)}
+                      </div>
+                      <div>
+                        <SentimentPill row={row} />
+                      </div>
+                    </DesktopTableRow>
+                  ))}
+                </DesktopTableBody>
+              </DesktopTable>
+            </div>
 
-            <div className="mt-4 grid gap-3 lg:hidden">
+            <div className="grid gap-3 lg:hidden">
               {data.rows.map((row) => (
                 <MobileDataCard key={row.id}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="truncate text-sm font-semibold text-slate-900">
                         {row.studentName}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        {row.className} • {row.subjectName}
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {row.className} · {row.subjectName}
                       </p>
                     </div>
                     <SentimentPill row={row} />
                   </div>
+
                   <p className="mt-3 text-sm leading-6 text-slate-700">{row.comment}</p>
-                  <p className="mt-3 text-xs text-slate-500">
-                    Nilai {formatAverageScore(row.averageScore)} • {formatDate(row.createdAt)}
-                    {showTeacherColumn && row.teacherName ? ` • ${row.teacherName}` : ""}
-                  </p>
+
+                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-xs">
+                    <div>
+                      <dt className="text-slate-400">Nilai</dt>
+                      <dd className="mt-0.5 font-semibold tabular-nums text-slate-800">
+                        {formatAverageScore(row.averageScore)} / {LIKERT_MAX_SCORE}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Tanggal</dt>
+                      <dd className="mt-0.5 text-slate-700">{formatDate(row.createdAt)}</dd>
+                    </div>
+                    {showTeacherColumn ? (
+                      <div className="col-span-2">
+                        <dt className="text-slate-400">Guru</dt>
+                        <dd className="mt-0.5 truncate text-slate-700">
+                          {row.teacherName ?? "Belum ditentukan"}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
                 </MobileDataCard>
               ))}
             </div>

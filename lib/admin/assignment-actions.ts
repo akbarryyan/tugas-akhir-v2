@@ -14,6 +14,7 @@ import {
 export async function assignTeacherAction(formData: FormData) {
   try {
     const parsedData = assignmentSchema.parse({
+      classNames: formData.getAll("classNames").map(String),
       subjectId: formData.get("subjectId"),
       teacherId: formData.get("teacherId"),
     });
@@ -40,23 +41,46 @@ export async function assignTeacherAction(formData: FormData) {
       }),
     ]);
 
-    await prisma.subjectTeacher.create({
-      data: {
-        subjectId: parsedData.subjectId,
-        teacherId: parsedData.teacherId,
-      },
-    });
+    // Satu kelas hanya boleh punya satu guru per mata pelajaran, jadi penugasan
+    // untuk kelas yang sudah terisi ditimpa alih-alih ditolak. Ini juga yang
+    // membuat pemindahan kelas dari satu guru ke guru lain cukup satu langkah.
+    for (const className of parsedData.classNames) {
+      await prisma.subjectTeacher.upsert({
+        where: {
+          subjectId_className: {
+            className,
+            subjectId: parsedData.subjectId,
+          },
+        },
+        create: {
+          className,
+          subjectId: parsedData.subjectId,
+          teacherId: parsedData.teacherId,
+        },
+        update: {
+          teacherId: parsedData.teacherId,
+        },
+      });
+    }
+
+    const classLabel = parsedData.classNames.join(", ");
+
     await recordAdminActivity({
       action: "CREATE",
-      entityLabel: `${teacher?.user.name ?? "Guru"} - ${subject?.name ?? "Mapel"}`,
+      entityLabel: `${teacher?.user.name ?? "Guru"} - ${subject?.name ?? "Mapel"} (${classLabel})`,
       entityType: "PENGAMPU",
-      message: `Guru pengampu ${teacher?.user.name ?? ""}`.trim() + ` ditugaskan ke ${subject?.name ?? "mapel"}`,
+      message:
+        `Guru pengampu ${teacher?.user.name ?? ""}`.trim() +
+        ` ditugaskan ke ${subject?.name ?? "mapel"} pada kelas ${classLabel}`,
     });
   } catch (error) {
     redirectWithMessage("/admin/pengampu", "error", getErrorMessage(error));
   }
 
   revalidatePath("/admin/pengampu");
+  revalidatePath("/admin");
+  revalidatePath("/siswa");
+  revalidatePath("/siswa/tryout");
   redirectWithMessage(
     "/admin/pengampu",
     "success",

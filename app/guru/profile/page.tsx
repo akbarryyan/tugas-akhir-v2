@@ -52,7 +52,13 @@ export default async function GuruProfilePage() {
   };
   const teacherProfile = profile.teacherProfile ?? { nip: null, subjectTeachers: [] };
   const initial = profile.name.slice(0, 1).toUpperCase();
-  const subjects = teacherProfile.subjectTeachers.map((item) => item.subject);
+  // Satu mata pelajaran dapat diampu pada beberapa kelas, jadi daftarnya
+  // diringkas agar tidak menampilkan nama mapel yang sama berulang kali.
+  const subjects = Array.from(
+    new Map(
+      teacherProfile.subjectTeachers.map((item) => [item.subject.id, item.subject]),
+    ).values(),
+  );
 
   return (
     <div className="space-y-5">

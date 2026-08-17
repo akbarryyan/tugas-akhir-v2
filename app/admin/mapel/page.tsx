@@ -371,7 +371,7 @@ export default async function MapelAdminPage({ searchParams }: MapelPageProps) {
 
                   <div className="mb-4 flex flex-wrap gap-3 text-xs font-medium text-slate-500">
                     <span className="max-w-full truncate rounded-full bg-slate-100 px-3 py-1">
-                      {subject._count.subjectTeachers} guru pengampu
+                      {subject._count.subjectTeachers} penugasan kelas
                     </span>
                     <span className="max-w-full truncate rounded-full bg-slate-100 px-3 py-1">
                       {subject._count.questions} soal

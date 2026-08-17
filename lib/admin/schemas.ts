@@ -46,6 +46,9 @@ export const subjectStatusSchema = z.object({
 });
 
 export const assignmentSchema = z.object({
+  classNames: z
+    .array(z.string().trim().min(2))
+    .min(1, "Minimal satu kelas wajib dipilih."),
   subjectId: z.string().min(1, "Mata pelajaran wajib dipilih."),
   teacherId: z.string().min(1, "Guru wajib dipilih."),
 });

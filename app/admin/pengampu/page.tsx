@@ -54,7 +54,7 @@ export default async function PengampuAdminPage({
   const order = getSortOrder(resolvedSearchParams?.order);
   const where = buildAssignmentWhere(query, searchField);
 
-  const [teachers, subjects, totalAssignments] = await Promise.all([
+  const [teachers, subjects, totalAssignments, classGroups] = await Promise.all([
     prisma.teacherProfile.findMany({
       include: {
         user: true,
@@ -73,7 +73,16 @@ export default async function PengampuAdminPage({
     prisma.subjectTeacher.count({
       where,
     }),
+    // Daftar kelas diturunkan dari data siswa karena kelas belum menjadi entitas
+    // tersendiri; kelas baru otomatis muncul begitu ada siswa yang menempatinya.
+    prisma.studentProfile.groupBy({
+      by: ["className"],
+      orderBy: {
+        className: "asc",
+      },
+    }),
   ]);
+  const classNames = classGroups.map((group) => group.className);
   const totalPages = Math.max(1, Math.ceil(totalAssignments / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const assignments: Prisma.SubjectTeacherGetPayload<{
@@ -121,11 +130,12 @@ export default async function PengampuAdminPage({
         options={[
           { label: "Semua Data", value: "all" },
           { label: "Mata Pelajaran", value: "subject" },
+          { label: "Kelas", value: "class" },
           { label: "Guru", value: "teacher" },
           { label: "NIP", value: "nip" },
         ]}
         query={query}
-        placeholder="Cari mata pelajaran, nama guru, atau NIP"
+        placeholder="Cari mata pelajaran, kelas, nama guru, atau NIP"
       />
 
       <div className="space-y-6">
@@ -172,6 +182,39 @@ export default async function PengampuAdminPage({
               </select>
             </label>
 
+            <fieldset className="grid gap-2 text-sm font-medium text-slate-700">
+              <legend className="mb-1">Kelas yang Diampu</legend>
+              {classNames.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-3 text-sm font-normal text-slate-500">
+                  Belum ada kelas terdata. Tambahkan siswa terlebih dahulu pada menu
+                  Kelola Data Siswa.
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs font-normal leading-5 text-slate-500">
+                    Pilih semua kelas yang diajar guru ini untuk mata pelajaran tersebut.
+                    Bila sebuah kelas sudah punya guru lain, penugasannya akan digantikan.
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {classNames.map((className) => (
+                      <label
+                        key={className}
+                        className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-normal text-slate-700 transition hover:border-indigo-300 has-checked:border-indigo-500 has-checked:bg-indigo-50/60"
+                      >
+                        <input
+                          type="checkbox"
+                          name="classNames"
+                          value={className}
+                          className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
+                        />
+                        {className}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </fieldset>
+
             <div className="mt-2 flex flex-wrap gap-3">
               <LoadingSubmitButton
                 idleLabel="Simpan Penugasan"
@@ -194,8 +237,8 @@ export default async function PengampuAdminPage({
             {assignments.length === 0 ? (
               <AdminEmptyState message="Belum ada penugasan guru pengampu." />
             ) : (
-              <DesktopTable minWidthClassName="min-w-[860px]">
-                <DesktopTableHeaderRow columnsClassName="grid-cols-[1fr_1fr_0.9fr_auto]">
+              <DesktopTable minWidthClassName="min-w-[980px]">
+                <DesktopTableHeaderRow columnsClassName="grid-cols-[1fr_0.8fr_1fr_0.8fr_auto]">
                   <SortableHeaderLink
                     currentOrder={order}
                     currentSort={sort}
@@ -206,6 +249,17 @@ export default async function PengampuAdminPage({
                       q: query,
                     }}
                     sortKey="subject"
+                  />
+                  <SortableHeaderLink
+                    currentOrder={order}
+                    currentSort={sort}
+                    label="Kelas"
+                    pathname="/admin/pengampu"
+                    searchParams={{
+                      field: searchField === "all" ? undefined : searchField,
+                      q: query,
+                    }}
+                    sortKey="class"
                   />
                   <SortableHeaderLink
                     currentOrder={order}
@@ -236,7 +290,7 @@ export default async function PengampuAdminPage({
                   {assignments.map((assignment) => (
                     <DesktopTableRow
                       key={assignment.id}
-                      columnsClassName="grid-cols-[1fr_1fr_0.9fr_auto] items-center"
+                      columnsClassName="grid-cols-[1fr_0.8fr_1fr_0.8fr_auto] items-center"
                     >
                       <div className="space-y-0.5">
                         <p className="text-sm font-semibold text-slate-950">
@@ -245,6 +299,11 @@ export default async function PengampuAdminPage({
                         <p className="text-xs text-slate-500">
                           Mata pelajaran aktif
                         </p>
+                      </div>
+                      <div>
+                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                          {assignment.className}
+                        </span>
                       </div>
                       <div className="space-y-0.5">
                         <p className="text-sm font-semibold text-slate-950">
@@ -297,7 +356,7 @@ export default async function PengampuAdminPage({
                       </div>
                       <div className="min-w-0 space-y-1">
                         <h2 className="truncate text-lg font-semibold text-slate-950">
-                          {assignment.subject.name}
+                          {assignment.subject.name} · {assignment.className}
                         </h2>
                         <p className="truncate text-sm text-slate-600">
                           {assignment.teacher.user.name}
@@ -312,6 +371,9 @@ export default async function PengampuAdminPage({
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="max-w-full truncate rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                       {assignment.subject.name}
+                    </span>
+                    <span className="max-w-full truncate rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                      {assignment.className}
                     </span>
                     <span className="max-w-full truncate rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                       {assignment.teacher.user.name}
@@ -353,7 +415,7 @@ function getSortOrder(order?: string) {
 }
 
 function getAssignmentSort(sort?: string) {
-  if (sort === "nip" || sort === "subject") {
+  if (sort === "nip" || sort === "subject" || sort === "class") {
     return sort;
   }
 
@@ -361,7 +423,12 @@ function getAssignmentSort(sort?: string) {
 }
 
 function getAssignmentSearchField(field?: string) {
-  if (field === "nip" || field === "subject" || field === "teacher") {
+  if (
+    field === "nip" ||
+    field === "subject" ||
+    field === "teacher" ||
+    field === "class"
+  ) {
     return field;
   }
 
@@ -370,10 +437,18 @@ function getAssignmentSearchField(field?: string) {
 
 function buildAssignmentWhere(
   query: string | undefined,
-  field: "all" | "nip" | "subject" | "teacher",
+  field: "all" | "class" | "nip" | "subject" | "teacher",
 ): Prisma.SubjectTeacherWhereInput | undefined {
   if (!query) {
     return undefined;
+  }
+
+  if (field === "class") {
+    return {
+      className: {
+        contains: query,
+      },
+    };
   }
 
   if (field === "subject") {
@@ -419,6 +494,11 @@ function buildAssignmentWhere(
   return {
     OR: [
       {
+        className: {
+          contains: query,
+        },
+      },
+      {
         subject: {
           is: {
             name: {
@@ -454,6 +534,12 @@ function buildAssignmentWhere(
 }
 
 function getAssignmentOrderBy(sort: string, order: "asc" | "desc") {
+  if (sort === "class") {
+    return {
+      className: order,
+    } as const;
+  }
+
   if (sort === "subject") {
     return {
       subject: {

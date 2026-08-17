@@ -171,12 +171,14 @@ async function upsertSubject(name, description) {
   });
 }
 
-async function assignTeacherToSubject(teacherId, subjectId) {
-  await prisma.subjectTeacher.upsert({
-    where: { subjectId_teacherId: { subjectId, teacherId } },
-    create: { subjectId, teacherId },
-    update: {},
-  });
+async function assignTeacherToSubject(teacherId, subjectId, classNames) {
+  for (const className of classNames) {
+    await prisma.subjectTeacher.upsert({
+      where: { subjectId_className: { className, subjectId } },
+      create: { className, subjectId, teacherId },
+      update: { teacherId },
+    });
+  }
 }
 
 // ─── Questions ────────────────────────────────────────────────────────────────
@@ -324,12 +326,19 @@ async function seedCompletedSession({ studentProfileId, subjectId, tryoutId, ans
     })),
   });
 
-  // Guru yang dinilai diambil dari pembuat tryout, sama seperti alur produksi
-  // di app/siswa/tanggapan/_actions.ts.
-  const tryout = await prisma.tryout.findUnique({
-    where: { id: tryoutId },
-    select: { createdByTeacherId: true },
+  // Guru yang dinilai ditentukan dari penugasan mengajar pada kelas siswa,
+  // sama seperti alur produksi di app/siswa/tanggapan/_actions.ts.
+  const student = await prisma.studentProfile.findUnique({
+    where: { id: studentProfileId },
+    select: { className: true },
   });
+  const assignment = student
+    ? await prisma.subjectTeacher.findUnique({
+        where: { subjectId_className: { className: student.className, subjectId } },
+        select: { teacherId: true },
+      })
+    : null;
+  const evaluatedTeacherId = assignment?.teacherId ?? null;
 
   for (const fp of feedbackPlan) {
     const feedback = await prisma.feedback.upsert({
@@ -341,10 +350,10 @@ async function seedCompletedSession({ studentProfileId, subjectId, tryoutId, ans
         comment: fp.comment,
         studentId: studentProfileId,
         subjectId,
-        teacherId: tryout?.createdByTeacherId ?? null,
+        teacherId: evaluatedTeacherId,
         tryoutSessionId: session.id,
       },
-      update: { comment: fp.comment, teacherId: tryout?.createdByTeacherId ?? null },
+      update: { comment: fp.comment, teacherId: evaluatedTeacherId },
     });
 
     if (fp.ratings) {
@@ -756,9 +765,20 @@ async function main() {
   console.log("✓ Mata pelajaran selesai (Agama, Matematika, Bahasa Indonesia)");
 
   // Assignments
-  await assignTeacherToSubject(guruBudi.id, agama.id);
-  await assignTeacherToSubject(guruSiti.id, matematika.id);
-  await assignTeacherToSubject(guruSiti.id, bahasaIndonesia.id);
+  // Penugasan mengajar bersifat per kelas: satu guru memegang beberapa kelas,
+  // dan satu mata pelajaran dapat diampu guru berbeda pada kelas yang berbeda.
+  await assignTeacherToSubject(guruBudi.id, agama.id, ["XII IPA 1", "XII IPA 2"]);
+  await assignTeacherToSubject(guruSiti.id, agama.id, ["XII IPS 2"]);
+  await assignTeacherToSubject(guruSiti.id, matematika.id, [
+    "XII IPA 1",
+    "XII IPA 2",
+    "XII IPS 2",
+  ]);
+  await assignTeacherToSubject(guruBudi.id, bahasaIndonesia.id, [
+    "XII IPA 1",
+    "XII IPA 2",
+    "XII IPS 2",
+  ]);
   console.log("✓ Penugasan pengampu selesai");
 
   // Questions

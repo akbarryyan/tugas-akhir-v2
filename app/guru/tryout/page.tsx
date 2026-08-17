@@ -50,7 +50,11 @@ export default async function GuruTryoutPage({
   });
 
   const teacherId = teacherProfile?.id ?? "";
-  const subjectOptions = teacherProfile?.subjectTeachers.map((item) => item.subject) ?? [];
+  const subjectOptions = Array.from(
+    new Map(
+      (teacherProfile?.subjectTeachers ?? []).map((item) => [item.subject.id, item.subject]),
+    ).values(),
+  );
 
   const bankSoalOptions = teacherId
     ? await prisma.bankSoal.findMany({

@@ -32,6 +32,18 @@ export default async function GuruPage() {
     },
   });
 
+  // Satu mata pelajaran bisa diampu pada beberapa kelas, sehingga jumlah baris
+  // penugasan bukan jumlah mata pelajaran. Diringkas dulu supaya kartu ringkasan
+  // dan daftar chip tidak menghitung atau menampilkan mapel yang sama berulang.
+  const taughtSubjects = Array.from(
+    new Map(
+      (teacherProfile?.subjectTeachers ?? []).map((item) => [
+        item.subjectId,
+        item.subject,
+      ]),
+    ).values(),
+  );
+
   const [
     questionCount,
     bankSoalCount,
@@ -169,7 +181,7 @@ export default async function GuruPage() {
         <AdminStatCard
           accent="sky"
           label="Mapel Diampu"
-          value={teacherProfile?.subjectTeachers.length ?? 0}
+          value={taughtSubjects.length}
           description="Mata pelajaran yang menjadi ruang kerja guru di sistem."
         />
         <AdminStatCard
@@ -265,15 +277,15 @@ export default async function GuruPage() {
             description="Mulailah dari kelola soal, susun bank soal, lalu bentuk paket tryout yang siap dipakai."
           >
             <div className="flex flex-wrap gap-3">
-              {(teacherProfile?.subjectTeachers ?? []).slice(0, 4).map((item) => (
+              {taughtSubjects.slice(0, 4).map((subject) => (
                 <span
-                  key={item.subject.name}
+                  key={subject.name}
                   className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700"
                 >
-                  {item.subject.name}
+                  {subject.name}
                 </span>
               ))}
-              {(teacherProfile?.subjectTeachers.length ?? 0) === 0 ? (
+              {taughtSubjects.length === 0 ? (
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-500">
                   Belum ada mapel ampuan
                 </span>

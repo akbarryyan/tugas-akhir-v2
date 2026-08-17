@@ -60,7 +60,7 @@ export default async function AdminPage() {
     {
       href: "/admin/pengampu",
       label: "Guru Pengampu",
-      note: "Pantau kecocokan relasi guru dengan mata pelajaran yang diampu.",
+      note: "Pantau penugasan guru pada tiap mata pelajaran dan kelas yang diampu.",
       total: assignmentCount,
       unit: "relasi",
     },

@@ -1,15 +1,11 @@
 import { Role } from "@prisma/client";
 
-import { AdminEmptyState, PageIntro, StatusAlert } from "@/app/admin/_components";
-import { FeedbackReportView } from "@/app/admin/_feedback-report";
+import { AdminEmptyState, StatusAlert } from "@/app/admin/_components";
+import { FeedbackReportStats, FeedbackReportView } from "@/app/admin/_feedback-report";
 import { ReportFilters } from "@/app/admin/_report-filters";
 import { requireRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import {
-  getReportSummaryLine,
-  loadFeedbackReport,
-  parseReportFilters,
-} from "@/lib/sentiment/report";
+import { loadFeedbackReport, parseReportFilters } from "@/lib/sentiment/report";
 
 type GuruLaporanPageProps = {
   searchParams?: Promise<{
@@ -35,11 +31,6 @@ export default async function GuruLaporanPage({ searchParams }: GuruLaporanPageP
   if (!teacherProfile) {
     return (
       <div className="space-y-5">
-        <PageIntro
-          eyebrow="Laporan Evaluasi"
-          title="Laporan Tanggapan Siswa"
-          description="Rekap penilaian dan tanggapan siswa terhadap pembelajaran yang Anda ampu."
-        />
         <AdminEmptyState message="Profil guru belum ditemukan. Hubungi admin untuk melengkapi data kepegawaian Anda." />
       </div>
     );
@@ -52,11 +43,7 @@ export default async function GuruLaporanPage({ searchParams }: GuruLaporanPageP
 
   return (
     <div className="space-y-5">
-      <PageIntro
-        eyebrow="Laporan Evaluasi"
-        title="Laporan Tanggapan Siswa"
-        description={`Rekap penilaian dan tanggapan siswa terhadap pembelajaran yang Anda ampu. ${getReportSummaryLine(data)}`}
-      />
+      <FeedbackReportStats accent="sky" data={data} />
 
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
 
@@ -72,7 +59,6 @@ export default async function GuruLaporanPage({ searchParams }: GuruLaporanPageP
       />
 
       <FeedbackReportView
-        accent="sky"
         data={data}
         pathname="/guru/laporan"
         searchParams={{

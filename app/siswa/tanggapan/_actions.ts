@@ -69,31 +69,34 @@ function getErrorMessage(error: unknown) {
 }
 
 /**
- * Menentukan guru yang dinilai oleh tanggapan ini. Sumber utamanya adalah guru
- * pembuat tryout. Bila kolom itu kosong (tryout lama), guru masih bisa
- * dipastikan selama mata pelajaran tersebut hanya diampu satu orang; kalau
- * diampu lebih dari satu, tanggapan sengaja dibiarkan tanpa guru daripada
- * dibebankan ke orang yang salah.
+ * Menentukan guru yang dinilai oleh tanggapan ini.
+ *
+ * Acuannya adalah penugasan mengajar pada kelas siswa, bukan pembuat tryout.
+ * Satu paket soal bisa dipakai bersama oleh banyak kelas, sedangkan yang
+ * mengajar tiap kelas belum tentu orang yang sama — memakai pembuat tryout akan
+ * membebankan penilaian seluruh kelas kepada satu guru saja.
+ *
+ * Bila kelas tersebut belum punya penugasan untuk mata pelajaran ini, tanggapan
+ * dibiarkan tanpa guru daripada dibebankan ke orang yang salah. Data seperti itu
+ * tetap tersimpan dan dilaporkan sebagai belum terkait guru.
  */
 async function resolveEvaluatedTeacherId(params: {
-  createdByTeacherId: string | null;
+  className: string;
   subjectId: string;
 }) {
-  if (params.createdByTeacherId) {
-    return params.createdByTeacherId;
-  }
-
-  const subjectTeachers = await prisma.subjectTeacher.findMany({
+  const assignment = await prisma.subjectTeacher.findUnique({
     where: {
-      subjectId: params.subjectId,
+      subjectId_className: {
+        className: params.className,
+        subjectId: params.subjectId,
+      },
     },
     select: {
       teacherId: true,
     },
-    take: 2,
   });
 
-  return subjectTeachers.length === 1 ? subjectTeachers[0].teacherId : null;
+  return assignment?.teacherId ?? null;
 }
 
 async function analyzeFeedbackAndPersistSentiment(params: {
@@ -170,6 +173,7 @@ export async function submitStudentFeedbackAction(formData: FormData) {
         userId: studentUserId,
       },
       select: {
+        className: true,
         id: true,
       },
     });
@@ -193,7 +197,6 @@ export async function submitStudentFeedbackAction(formData: FormData) {
             id: true,
             title: true,
             subjectId: true,
-            createdByTeacherId: true,
             subject: {
               select: {
                 name: true,
@@ -209,7 +212,7 @@ export async function submitStudentFeedbackAction(formData: FormData) {
     }
 
     const teacherId = await resolveEvaluatedTeacherId({
-      createdByTeacherId: tryoutSession.tryout.createdByTeacherId,
+      className: studentProfile.className,
       subjectId: tryoutSession.tryout.subjectId,
     });
 

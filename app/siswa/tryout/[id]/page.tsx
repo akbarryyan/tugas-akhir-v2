@@ -31,9 +31,35 @@ export default async function SiswaTryoutDetailPage({
       userId: studentUserId,
     },
     select: {
+      className: true,
       id: true,
     },
   });
+
+  if (!studentProfile) {
+    return (
+      <div className="space-y-6">
+        <section className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+            Detail Tryout
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+            Profil siswa belum siap
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+            Lengkapi atau sinkronkan profil siswa terlebih dahulu agar tryout bisa dikerjakan
+            dengan aman dan hasilnya tercatat pada akunmu.
+          </p>
+          <Link
+            href="/siswa/pengaturan"
+            className="mt-6 inline-flex h-11 items-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Buka Pengaturan Profil
+          </Link>
+        </section>
+      </div>
+    );
+  }
 
   const tryout = await prisma.tryout.findFirst({
     where: {
@@ -41,6 +67,11 @@ export default async function SiswaTryoutDetailPage({
       isPublished: true,
       subject: {
         isActive: true,
+        subjectTeachers: {
+          some: {
+            className: studentProfile.className,
+          },
+        },
       },
       tryoutQuestions: {
         some: {
@@ -136,31 +167,6 @@ export default async function SiswaTryoutDetailPage({
             className="mt-6 inline-flex h-11 items-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             Kembali ke Daftar Tryout
-          </Link>
-        </section>
-      </div>
-    );
-  }
-
-  if (!studentProfile) {
-    return (
-      <div className="space-y-6">
-        <section className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
-            Detail Tryout
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
-            Profil siswa belum siap
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
-            Lengkapi atau sinkronkan profil siswa terlebih dahulu agar tryout bisa dikerjakan
-            dengan aman dan hasilnya tercatat pada akunmu.
-          </p>
-          <Link
-            href="/siswa/pengaturan"
-            className="mt-6 inline-flex h-11 items-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Buka Pengaturan Profil
           </Link>
         </section>
       </div>

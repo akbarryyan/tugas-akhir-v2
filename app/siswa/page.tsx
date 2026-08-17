@@ -14,6 +14,7 @@ export default async function SiswaPage() {
       userId: studentUserId,
     },
     select: {
+      className: true,
       id: true,
     },
   });
@@ -33,6 +34,11 @@ export default async function SiswaPage() {
               isPublished: true,
               subject: {
                 isActive: true,
+                subjectTeachers: {
+                  some: {
+                    className: studentProfile.className,
+                  },
+                },
               },
               tryoutQuestions: {
                 some: {
@@ -120,6 +126,11 @@ export default async function SiswaPage() {
               isPublished: true,
               subject: {
                 isActive: true,
+                subjectTeachers: {
+                  some: {
+                    className: studentProfile.className,
+                  },
+                },
               },
               tryoutQuestions: {
                 some: {

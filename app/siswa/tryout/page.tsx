@@ -15,50 +15,60 @@ export default async function SiswaTryoutPage() {
       userId: studentUserId,
     },
     select: {
+      className: true,
       id: true,
     },
   });
 
   const [availableTryouts, completedSessions] = await Promise.all([
-    prisma.tryout.findMany({
-      where: {
-        isPublished: true,
-        subject: {
-          isActive: true,
-        },
-        tryoutQuestions: {
-          some: {
-            question: {
+    // Daftar tryout mengikuti penugasan mengajar pada kelas siswa, sehingga
+    // siswa hanya melihat mata pelajaran yang memang diajarkan di kelasnya.
+    studentProfile
+      ? prisma.tryout.findMany({
+          where: {
+            isPublished: true,
+            subject: {
               isActive: true,
+              subjectTeachers: {
+                some: {
+                  className: studentProfile.className,
+                },
+              },
+            },
+            tryoutQuestions: {
+              some: {
+                question: {
+                  isActive: true,
+                },
+              },
             },
           },
-        },
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        durationMinutes: true,
-        subject: {
           select: {
-            name: true,
+            id: true,
+            title: true,
+            description: true,
+            durationMinutes: true,
+            subject: {
+              select: {
+                name: true,
+              },
+            },
+            _count: {
+              select: {
+                tryoutQuestions: true,
+              },
+            },
           },
-        },
-        _count: {
-          select: {
-            tryoutQuestions: true,
-          },
-        },
-      },
-      orderBy: [
-        {
-          updatedAt: "desc",
-        },
-        {
-          createdAt: "desc",
-        },
-      ],
-    }),
+          orderBy: [
+            {
+              updatedAt: "desc",
+            },
+            {
+              createdAt: "desc",
+            },
+          ],
+        })
+      : [],
     studentProfile
       ? prisma.tryoutSession.findMany({
           where: {

@@ -114,16 +114,25 @@ model Subject {
   @@index([isActive])
 }
 
+/// Penugasan mengajar: satu baris berarti seorang guru mengampu satu mata
+/// pelajaran pada satu kelas. Seorang guru dapat memegang beberapa kelas untuk
+/// mata pelajaran yang sama, dan satu mata pelajaran dapat diampu guru berbeda
+/// di kelas yang berbeda.
 model SubjectTeacher {
   id        String         @id @default(cuid())
   subjectId String
   teacherId String
+  className String
   subject   Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   createdAt DateTime       @default(now())
 
-  @@unique([subjectId, teacherId])
+  /// Satu kelas hanya boleh punya satu guru untuk tiap mata pelajaran, supaya
+  /// penentuan guru yang dinilai pada umpan balik tidak pernah ambigu.
+  @@unique([subjectId, className])
   @@index([teacherId])
+  @@index([className])
+  @@index([subjectId, teacherId])
 }
 
 model Question {

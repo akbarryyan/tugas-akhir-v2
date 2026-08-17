@@ -1,7 +1,7 @@
 import { Role } from "@prisma/client";
 
 import { PageIntro, StatusAlert } from "@/app/admin/_components";
-import { FeedbackReportView } from "@/app/admin/_feedback-report";
+import { FeedbackReportStats, FeedbackReportView } from "@/app/admin/_feedback-report";
 import { ReportFilters } from "@/app/admin/_report-filters";
 import { requireRole } from "@/lib/auth/session";
 import {
@@ -54,8 +54,9 @@ export default async function AdminLaporanPage({ searchParams }: AdminLaporanPag
         }))}
       />
 
+      <FeedbackReportStats accent="indigo" data={data} />
+
       <FeedbackReportView
-        accent="indigo"
         data={data}
         pathname="/admin/laporan"
         searchParams={{
