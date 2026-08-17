@@ -15,6 +15,10 @@ import {
   type SentimentChartData,
 } from "@/app/admin/_sentiment-charts";
 import { formatAverageScore, LIKERT_MAX_SCORE } from "@/lib/feedback-likert";
+import {
+  formatConfidencePercent,
+  REVIEW_CONFIDENCE_THRESHOLD,
+} from "@/lib/sentiment/confidence";
 import { getTotal } from "@/lib/sentiment/aggregate";
 import type { FeedbackReportData, FeedbackReportRow } from "@/lib/sentiment/report";
 
@@ -38,7 +42,7 @@ export function FeedbackReportStats({
   const total = getTotal(data.counts);
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <ReportStatCard
         accent={accent}
         label="Tanggapan Dianalisis"
@@ -70,6 +74,16 @@ export function FeedbackReportStats({
             : `${formatAverageScore(data.likert.overallAverage)} / ${LIKERT_MAX_SCORE}`
         }
         helper={`Dihitung dari ${data.likert.responseCount} jawaban skala.`}
+      />
+      <ReportStatCard
+        accent="amber"
+        label="Perlu Ditinjau"
+        value={String(data.needsReviewCount)}
+        helper={
+          data.needsReviewCount === 0
+            ? "Semua label otomatis sudah cukup meyakinkan."
+            : `Keyakinan model di bawah ${Math.round(REVIEW_CONFIDENCE_THRESHOLD * 100)}%, sebaiknya dikoreksi lewat Review Sentimen.`
+        }
       />
     </section>
   );
@@ -290,20 +304,39 @@ function SentimentPill({ row }: { row: FeedbackReportRow }) {
 
   return (
     <span className="inline-flex flex-col gap-1">
-      <span
-        className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${
-          isPositive ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-        }`}
-      >
-        {isPositive ? "Positif" : "Negatif"}
+      <span className="flex flex-wrap items-center gap-1">
+        <span
+          className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${
+            isPositive ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+          }`}
+        >
+          {isPositive ? "Positif" : "Negatif"}
+        </span>
+        {row.needsReview ? <NeedsReviewBadge /> : null}
       </span>
       <span className="text-[11px] text-slate-400">
         {row.labelSource === LabelSource.MANUAL
           ? "Ditinjau manual"
           : row.confidence !== null
-            ? `Keyakinan ${(row.confidence * 100).toFixed(1)}%`
+            ? `Keyakinan ${formatConfidencePercent(row.confidence)}`
             : "Otomatis"}
       </span>
+    </span>
+  );
+}
+
+/**
+ * Penanda bahwa keyakinan model di bawah ambang, sehingga labelnya belum pasti.
+ * Bukan kelas sentimen ketiga: klasifikasinya tetap positif atau negatif, hanya
+ * saja bukti untuk keduanya nyaris berimbang.
+ */
+export function NeedsReviewBadge() {
+  return (
+    <span
+      className="inline-flex w-fit items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800"
+      title={`Keyakinan model di bawah ${Math.round(REVIEW_CONFIDENCE_THRESHOLD * 100)}%, sebaiknya ditinjau guru.`}
+    >
+      Perlu Ditinjau
     </span>
   );
 }
@@ -350,14 +383,16 @@ function ReportStatCard({
   label,
   value,
 }: {
-  accent: "emerald" | "indigo" | "rose" | "sky";
+  accent: "amber" | "emerald" | "indigo" | "rose" | "sky";
   helper: string;
   label: string;
   value: string;
 }) {
   const accentClass =
-    accent === "emerald"
-      ? "bg-emerald-100 text-emerald-700"
+    accent === "amber"
+      ? "bg-amber-100 text-amber-800"
+      : accent === "emerald"
+        ? "bg-emerald-100 text-emerald-700"
       : accent === "rose"
         ? "bg-rose-100 text-rose-700"
         : accent === "sky"

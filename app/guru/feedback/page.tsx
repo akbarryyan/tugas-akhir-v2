@@ -7,6 +7,10 @@ import { requireRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { countByLabel, groupCountsBy } from "@/lib/sentiment/aggregate";
 import {
+  needsManualReview,
+  REVIEW_CONFIDENCE_THRESHOLD,
+} from "@/lib/sentiment/confidence";
+import {
   reanalyzeSingleSentimentAction,
   reanalyzeVisibleSentimentsAction,
 } from "@/lib/sentiment/reanalyze-actions";
@@ -186,6 +190,20 @@ export default async function GuruFeedbackPage({
   const manualCount = reviewableFeedbacks.filter(
     (feedback) => feedback.sentiment?.labelSource === LabelSource.MANUAL,
   ).length;
+  // Prediksi otomatis berkeyakinan rendah: label positif/negatifnya tetap ada,
+  // tetapi buktinya nyaris berimbang sehingga sebaiknya dikoreksi guru dulu.
+  const needsReviewCount = reviewableFeedbacks.filter((feedback) =>
+    needsManualReview(
+      feedback.sentiment
+        ? {
+            autoConfidence: feedback.sentiment.autoConfidence
+              ? Number(feedback.sentiment.autoConfidence)
+              : null,
+            labelSource: feedback.sentiment.labelSource,
+          }
+        : null,
+    ),
+  ).length;
 
   const chartData: SentimentChartData = {
     overall: countByLabel(allSentimentStats),
@@ -224,7 +242,7 @@ export default async function GuruFeedbackPage({
 
       <StatusAlert searchParams={Promise.resolve(resolvedSearchParams)} />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           label="Umpan Balik Siap Tinjau"
           value={reviewableFeedbacks.length}
@@ -242,6 +260,12 @@ export default async function GuruFeedbackPage({
           value={Math.max(0, reviewableFeedbacks.length - manualCount)}
           tone="amber"
           helper="Komentar yang final label-nya masih mengikuti sistem otomatis."
+        />
+        <SummaryCard
+          label="Perlu Ditinjau"
+          value={needsReviewCount}
+          tone="rose"
+          helper={`Keyakinan model di bawah ${Math.round(REVIEW_CONFIDENCE_THRESHOLD * 100)}%, prioritaskan koreksi pada komentar ini.`}
         />
       </section>
 
@@ -369,6 +393,14 @@ function ReviewFeedbackCard({ feedback, redirectTo }: ReviewFeedbackCardProps) {
             <Pill tone={feedback.sentiment.labelSource === LabelSource.MANUAL ? "amber" : "violet"}>
               {feedback.sentiment.labelSource === LabelSource.MANUAL ? "Final manual" : "Final otomatis"}
             </Pill>
+            {needsManualReview({
+              autoConfidence: feedback.sentiment.autoConfidence
+                ? Number(feedback.sentiment.autoConfidence)
+                : null,
+              labelSource: feedback.sentiment.labelSource,
+            }) ? (
+              <Pill tone="rose">Perlu ditinjau</Pill>
+            ) : null}
           </div>
           <div>
             <h3 className="text-lg font-semibold text-slate-950">{feedback.tryoutSession.tryout.title}</h3>
@@ -485,7 +517,7 @@ function SummaryCard({
 }: {
   helper: string;
   label: string;
-  tone: "amber" | "blue" | "emerald";
+  tone: "amber" | "blue" | "emerald" | "rose";
   value: number;
 }) {
   const toneClass =
@@ -493,7 +525,9 @@ function SummaryCard({
       ? "bg-emerald-100 text-emerald-700"
       : tone === "amber"
         ? "bg-amber-100 text-amber-700"
-        : "bg-blue-100 text-blue-700";
+        : tone === "rose"
+          ? "bg-rose-100 text-rose-700"
+          : "bg-blue-100 text-blue-700";
 
   return (
     <div className="rounded-[1rem] border border-slate-200/80 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
@@ -528,7 +562,7 @@ function Pill({
   tone,
 }: {
   children: React.ReactNode;
-  tone: "amber" | "blue" | "emerald" | "slate" | "violet";
+  tone: "amber" | "blue" | "emerald" | "rose" | "slate" | "violet";
 }) {
   const className =
     tone === "amber"
@@ -539,7 +573,9 @@ function Pill({
           ? "bg-violet-100 text-violet-700"
           : tone === "slate"
             ? "bg-slate-200 text-slate-700"
-            : "bg-blue-100 text-blue-700";
+            : tone === "rose"
+              ? "bg-rose-100 text-rose-700"
+              : "bg-blue-100 text-blue-700";
 
   return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }

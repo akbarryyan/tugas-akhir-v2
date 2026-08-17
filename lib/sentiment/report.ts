@@ -1,6 +1,10 @@
-import { Prisma } from "@prisma/client";
+import { LabelSource, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
+import {
+  needsManualReview,
+  REVIEW_CONFIDENCE_THRESHOLD,
+} from "@/lib/sentiment/confidence";
 import {
   buildLikertSummaryFromTotals,
   countByLabel,
@@ -28,6 +32,7 @@ export type FeedbackReportRow = {
   averageScore: number | null;
   finalLabel: string | null;
   labelSource: string | null;
+  needsReview: boolean;
   confidence: number | null;
   className: string;
   studentName: string;
@@ -40,6 +45,7 @@ export type FeedbackReportData = {
   percentages: { positif: number; negatif: number };
   respondentCount: number;
   pendingAnalysisCount: number;
+  needsReviewCount: number;
   likert: LikertSummary;
   byClass: SentimentBreakdownRow[];
   bySubject: SentimentBreakdownRow[];
@@ -109,6 +115,7 @@ export async function loadFeedbackReport(params: {
     ratingTotals,
     respondentCount,
     pendingAnalysisCount,
+    needsReviewCount,
     totalRows,
     rows,
     classNameGroups,
@@ -136,6 +143,18 @@ export async function loadFeedbackReport(params: {
     }),
     prisma.feedback.count({ where: feedbackWhere }),
     prisma.feedback.count({ where: { ...feedbackWhere, sentiment: { is: null } } }),
+    // Prediksi otomatis berkeyakinan rendah: perlu ditinjau guru sebelum
+    // labelnya dipakai. Label yang sudah dikoreksi manual tidak ikut dihitung.
+    prisma.sentimentAnalysis.count({
+      where: {
+        feedback: feedbackWhere,
+        labelSource: LabelSource.AUTO,
+        OR: [
+          { autoConfidence: { lt: REVIEW_CONFIDENCE_THRESHOLD } },
+          { autoConfidence: null },
+        ],
+      },
+    }),
     prisma.feedback.count({ where: analyzedWhere }),
     prisma.feedback.findMany({
       where: analyzedWhere,
@@ -203,6 +222,7 @@ export async function loadFeedbackReport(params: {
       subjects,
       teachers: teachers.map((teacher) => ({ id: teacher.id, name: teacher.user.name })),
     },
+    needsReviewCount,
     pendingAnalysisCount,
     percentages: getPercentages(counts),
     respondentCount,
@@ -220,6 +240,16 @@ export async function loadFeedbackReport(params: {
       finalLabel: row.sentiment?.finalLabel ?? null,
       id: row.id,
       labelSource: row.sentiment?.labelSource ?? null,
+      needsReview: needsManualReview(
+        row.sentiment
+          ? {
+              autoConfidence: row.sentiment.autoConfidence
+                ? Number(row.sentiment.autoConfidence)
+                : null,
+              labelSource: row.sentiment.labelSource,
+            }
+          : null,
+      ),
       studentName: row.student.user.name,
       subjectName: row.subject.name,
       teacherName: row.teacher?.user.name ?? null,
