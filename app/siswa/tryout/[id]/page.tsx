@@ -5,11 +5,7 @@ import { StatusAlert } from "@/app/admin/_components";
 import { StartTryoutButton } from "@/app/siswa/tryout/_start-tryout-button";
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import {
-  REQUIRED_FEEDBACK_ASPECT_COUNT,
-  getFeedbackCompletionCount,
-  isFeedbackComplete,
-} from "@/lib/student-feedback";
+import { isFeedbackComplete } from "@/lib/student-feedback";
 
 type SiswaTryoutDetailPageProps = {
   params: Promise<{
@@ -174,9 +170,6 @@ export default async function SiswaTryoutDetailPage({
   const answerMap = new Map(
     latestSession?.answers.map((answer) => [answer.questionId, answer]) ?? [],
   );
-  const feedbackCompletionCount = latestSession
-    ? getFeedbackCompletionCount(latestSession.feedbacks)
-    : 0;
   const hasCompleteFeedback = latestSession
     ? isFeedbackComplete(latestSession.feedbacks)
     : false;
@@ -241,11 +234,11 @@ export default async function SiswaTryoutDetailPage({
             />
             <StudentSummaryCard
               label="Tanggapan"
-              value={`${feedbackCompletionCount}/${REQUIRED_FEEDBACK_ASPECT_COUNT} aspek`}
+              value={hasCompleteFeedback ? "Terkirim" : "Belum diisi"}
               description={
                 hasCompleteFeedback
-                  ? "Umpan balik pembelajaran untuk mata pelajaran ini sudah lengkap."
-                  : "Masih ada aspek umpan balik yang perlu kamu lengkapi."
+                  ? "Umpan balik pembelajaran untuk mata pelajaran ini sudah kamu kirim."
+                  : "Penilaian dan tanggapan untuk sesi ini masih perlu kamu isi."
               }
             />
           </div>

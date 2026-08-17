@@ -7,12 +7,17 @@ import { SubmitFeedbackButton } from "@/app/siswa/tanggapan/_submit-feedback-but
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import {
-  REQUIRED_FEEDBACK_ASPECT_COUNT,
-  REQUIRED_FEEDBACK_ASPECTS,
+  formatAverageScore,
+  getAverageScore,
+  getLikertFieldName,
+  LIKERT_ITEMS,
+  LIKERT_SCALE,
+  likertScaleLabelMap,
+} from "@/lib/feedback-likert";
+import {
   feedbackAspectLabelMap,
-  getFeedbackCompletionCount,
-  getMissingFeedbackAspects,
   isFeedbackComplete,
+  isLegacyAspect,
 } from "@/lib/student-feedback";
 
 type SiswaTanggapanPageProps = {
@@ -63,6 +68,12 @@ export default async function SiswaTanggapanPage({
               select: {
                 aspect: true,
                 comment: true,
+                ratings: {
+                  select: {
+                    itemNumber: true,
+                    score: true,
+                  },
+                },
               },
             },
             tryout: {
@@ -108,6 +119,10 @@ export default async function SiswaTanggapanPage({
               select: {
                 aspect: true,
                 comment: true,
+                ratings: {
+                  select: { itemNumber: true, score: true },
+                  orderBy: { itemNumber: "asc" },
+                },
                 sentiment: {
                   select: { finalLabel: true },
                 },
@@ -136,12 +151,14 @@ export default async function SiswaTanggapanPage({
     isFeedbackComplete(sessionItem.feedbacks),
   ).length;
 
-  const defaultCommentsByAspect = Object.fromEntries(
-    REQUIRED_FEEDBACK_ASPECTS.map((aspect) => [
-      aspect,
-      selectedPendingSession?.feedbacks.find((item) => item.aspect === aspect)?.comment ?? "",
-    ]),
-  ) as Record<LearningAspect, string>;
+  const existingFeedback =
+    selectedPendingSession?.feedbacks.find(
+      (item) => item.aspect === LearningAspect.UMUM,
+    ) ?? null;
+  const defaultComment = existingFeedback?.comment ?? "";
+  const defaultScoreByItem = new Map(
+    (existingFeedback?.ratings ?? []).map((rating) => [rating.itemNumber, rating.score]),
+  );
 
   return (
     <div className="space-y-5">
@@ -154,9 +171,9 @@ export default async function SiswaTanggapanPage({
             Tanggapan
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
-            Setelah menyelesaikan tryout, lengkapi umpan balik tentang proses pembelajaran pada
-            mata pelajaran ini melalui tiga aspek utama: materi, penyampaian, dan soal.
-            Dengan begitu, tindak lanjut pembelajaran di kelas bisa dipahami lebih utuh.
+            Setelah menyelesaikan tryout, beri penilaian terhadap proses pembelajaran melalui
+            lima pernyataan berskala 1–5, lalu tuliskan satu tanggapan bebas. Penilaian skala
+            memberi angka yang terukur, sedangkan tanggapanmu menjelaskan alasannya.
           </p>
         </div>
       </section>
@@ -165,19 +182,19 @@ export default async function SiswaTanggapanPage({
 
       <section className="grid gap-4 xl:grid-cols-4">
         <FeedbackSummaryCard
-          helper="Tryout yang masih perlu dilengkapi seluruh aspek tanggapannya."
+          helper="Tryout selesai yang tanggapannya belum kamu kirim."
           label="Perlu Tanggapan"
           tone="orange"
           value={String(pendingSessions.length)}
         />
         <FeedbackSummaryCard
-          helper="Jumlah sesi tryout yang seluruh aspek feedback-nya sudah lengkap."
-          label="Tanggapan Lengkap"
+          helper="Jumlah sesi tryout yang tanggapannya sudah terkirim."
+          label="Tanggapan Terkirim"
           tone="emerald"
           value={String(completedFeedbackSessionCount)}
         />
         <FeedbackSummaryCard
-          helper="Jumlah tryout yang sudah kamu beri tanggapan lengkap."
+          helper="Jumlah tryout yang sudah kamu beri tanggapan."
           label="Riwayat Tryout"
           tone="blue"
           value={String(feedbackSessions.length)}
@@ -199,8 +216,7 @@ export default async function SiswaTanggapanPage({
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Pilih sesi tryout yang ingin kamu gunakan untuk mengirim umpan balik tentang
-                pembelajaran pada mata pelajaran terkait. Status lengkap dihitung jika ketiga
-                aspek utama sudah terisi.
+                pembelajaran pada mata pelajaran terkait.
               </p>
             </div>
             <Link
@@ -221,9 +237,7 @@ export default async function SiswaTanggapanPage({
               {pendingSessions.map((sessionItem) => (
                 <PendingFeedbackTryoutCard
                   key={sessionItem.id}
-                  completionCount={getFeedbackCompletionCount(sessionItem.feedbacks)}
                   isActive={selectedPendingSession?.id === sessionItem.id}
-                  missingAspects={getMissingFeedbackAspects(sessionItem.feedbacks)}
                   selectedSessionId={selectedPendingSession?.id ?? null}
                   sessionId={sessionItem.id}
                   subjectName={sessionItem.tryout.subject.name}
@@ -245,8 +259,8 @@ export default async function SiswaTanggapanPage({
               Form Tanggapan Belajar
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Isi seluruh aspek agar umpan balik tentang proses pembelajaran tersimpan lengkap dan
-              mudah ditindak lanjuti.
+              Isi seluruh pernyataan penilaian, lalu tuliskan tanggapanmu pada kolom di
+              bagian bawah.
             </p>
           </div>
 
@@ -281,8 +295,7 @@ export default async function SiswaTanggapanPage({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700">
-                      {getFeedbackCompletionCount(selectedPendingSession.feedbacks)}/
-                      {REQUIRED_FEEDBACK_ASPECT_COUNT} aspek terisi
+                      {existingFeedback ? "Tersimpan, bisa diperbarui" : "Belum ditanggapi"}
                     </span>
                     <Link
                       href={`/siswa/tryout/${selectedPendingSession.tryout.id}`}
@@ -294,35 +307,67 @@ export default async function SiswaTanggapanPage({
                 </div>
               </div>
 
-              <div className="grid gap-4">
-                <FeedbackTextareaField
-                  name="materi"
-                  title="Materi"
-                  description="Ceritakan apakah materi pelajaran yang disampaikan di kelas terasa jelas, relevan, dan membantu pemahamanmu."
-                  placeholder="Contoh: Materi yang diajarkan sudah cukup jelas, tetapi ada beberapa topik yang menurut saya perlu dijelaskan lebih perlahan..."
-                  defaultValue={defaultCommentsByAspect[LearningAspect.MATERI]}
+              <fieldset className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/60 p-4">
+                <legend className="px-1 text-sm font-semibold text-slate-900">
+                  Penilaian Pembelajaran
+                </legend>
+                <p className="text-sm leading-6 text-slate-500">
+                  Pilih satu angka pada setiap pernyataan sesuai pengalamanmu di kelas.
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 rounded-[1.1rem] bg-white/70 px-3 py-2.5">
+                  {LIKERT_SCALE.map((score) => (
+                    <span
+                      key={score}
+                      className="inline-flex items-center gap-1.5 text-xs text-slate-500"
+                    >
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-600">
+                        {score}
+                      </span>
+                      {likertScaleLabelMap[score]}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  {LIKERT_ITEMS.map((item) => (
+                    <LikertItemField
+                      key={item.number}
+                      defaultScore={defaultScoreByItem.get(item.number) ?? null}
+                      itemNumber={item.number}
+                      statement={item.statement}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+
+              <label className="grid gap-2 rounded-[1.5rem] border border-slate-200/80 bg-slate-50/60 p-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Tanggapan untuk Guru
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Tuliskan pendapat, kritik, atau saranmu tentang pembelajaran pada mata
+                    pelajaran ini. Kolom inilah yang dianalisis sentimennya oleh sistem.
+                  </p>
+                </div>
+                <textarea
+                  name="comment"
+                  defaultValue={defaultComment}
+                  rows={5}
+                  required
+                  minLength={10}
+                  maxLength={5000}
+                  placeholder="Contoh: Penjelasannya enak diikuti dan mudah dipahami, tetapi soal tryoutnya terasa lebih sulit daripada contoh yang dibahas di kelas..."
+                  className="w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                 />
-                <FeedbackTextareaField
-                  name="penyampaian"
-                  title="Penyampaian"
-                  description="Jelaskan bagaimana cara guru menyampaikan materi, menjawab pertanyaan, dan membangun suasana belajar di kelas."
-                  placeholder="Contoh: Cara penyampaiannya mudah dipahami, tetapi saya akan lebih terbantu jika ada lebih banyak contoh saat penjelasan..."
-                  defaultValue={defaultCommentsByAspect[LearningAspect.PENYAMPAIAN]}
-                />
-                <FeedbackTextareaField
-                  name="soal"
-                  title="Soal"
-                  description="Berikan tanggapan tentang soal tryout yang kamu kerjakan: kejelasan petunjuk, tingkat kesulitan, dan kesesuaiannya dengan materi yang diajarkan."
-                  placeholder="Contoh: Soalnya sudah sesuai dengan materi, tetapi beberapa petunjuk pengerjaan menurut saya masih kurang jelas..."
-                  defaultValue={defaultCommentsByAspect[LearningAspect.SOAL]}
-                />
-              </div>
+              </label>
 
               <div className="flex flex-wrap items-center gap-3">
                 <SubmitFeedbackButton />
                 <span className="text-sm text-slate-500">
-                  Setelah tersimpan, sesi ini akan tercatat sebagai umpan balik pembelajaran yang
-                  lengkap.
+                  Setelah tersimpan, tanggapanmu langsung dianalisis dan masuk ke laporan
+                  evaluasi pembelajaran.
                 </span>
               </div>
             </form>
@@ -388,16 +433,14 @@ function FeedbackSummaryCard({
         </span>
       </div>
       <p className="mt-4 text-sm font-semibold text-slate-500">{label}</p>
-      <p className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">{value}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
       <p className="mt-2 text-sm leading-6 text-slate-500">{helper}</p>
     </div>
   );
 }
 
 function PendingFeedbackTryoutCard({
-  completionCount,
   isActive,
-  missingAspects,
   selectedSessionId,
   sessionId,
   subjectName,
@@ -405,9 +448,7 @@ function PendingFeedbackTryoutCard({
   title,
   tryoutId,
 }: {
-  completionCount: number;
   isActive: boolean;
-  missingAspects: LearningAspect[];
   selectedSessionId: string | null;
   sessionId: string;
   subjectName: string;
@@ -428,7 +469,7 @@ function PendingFeedbackTryoutCard({
           {subjectName}
         </span>
         <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">
-          {completionCount}/{REQUIRED_FEEDBACK_ASPECT_COUNT} aspek
+          Belum ditanggapi
         </span>
       </div>
       <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">{title}</h3>
@@ -436,8 +477,7 @@ function PendingFeedbackTryoutCard({
         Selesai dikerjakan {submittedAt ? formatDate(submittedAt) : "baru-baru ini"}.
       </p>
       <p className="mt-3 text-sm leading-6 text-slate-600">
-        Aspek yang masih perlu diisi:{" "}
-        {missingAspects.map((aspect) => feedbackAspectLabelMap[aspect]).join(", ")}.
+        Isi lima pernyataan penilaian dan satu tanggapan untuk menyelesaikan sesi ini.
       </p>
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Link
@@ -461,34 +501,47 @@ function PendingFeedbackTryoutCard({
   );
 }
 
-function FeedbackTextareaField({
-  defaultValue,
-  description,
-  name,
-  placeholder,
-  title,
+function LikertItemField({
+  defaultScore,
+  itemNumber,
+  statement,
 }: {
-  defaultValue: string;
-  description: string;
-  name: string;
-  placeholder: string;
-  title: string;
+  defaultScore: number | null;
+  itemNumber: number;
+  statement: string;
 }) {
+  const fieldName = getLikertFieldName(itemNumber);
+
   return (
-    <label className="grid gap-2 rounded-[1.4rem] border border-slate-200/80 bg-slate-50/60 p-4">
-      <div>
-        <p className="text-sm font-semibold text-slate-900">{title}</p>
-        <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+    <div className="rounded-[1.4rem] border border-slate-200/80 bg-white p-4 transition hover:border-blue-200 sm:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <div className="flex items-start gap-3">
+          <span className="mt-px inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700">
+            {itemNumber}
+          </span>
+          <p className="text-sm font-medium leading-6 text-slate-800">{statement}</p>
+        </div>
+
+        <div className="flex shrink-0 divide-x divide-slate-200 overflow-hidden rounded-full border border-slate-200 bg-slate-50">
+          {LIKERT_SCALE.map((score) => (
+            <label key={score} className="flex-1 lg:flex-none">
+              <input
+                type="radio"
+                name={fieldName}
+                value={score}
+                required
+                defaultChecked={defaultScore === score}
+                className="peer sr-only"
+              />
+              <span className="flex h-10 w-full min-w-[2.9rem] cursor-pointer items-center justify-center text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-blue-700 peer-checked:bg-blue-600 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-blue-300 peer-focus-visible:ring-inset">
+                {score}
+                <span className="sr-only"> — {likertScaleLabelMap[score]}</span>
+              </span>
+            </label>
+          ))}
+        </div>
       </div>
-      <textarea
-        name={name}
-        defaultValue={defaultValue}
-        rows={5}
-        required
-        placeholder={placeholder}
-        className="w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-      />
-    </label>
+    </div>
   );
 }
 
@@ -504,6 +557,7 @@ type FeedbackSessionItem = {
   feedbacks: {
     aspect: LearningAspect;
     comment: string;
+    ratings: { itemNumber: number; score: number }[];
     sentiment: { finalLabel: SentimentLabel } | null;
   }[];
 };
@@ -534,9 +588,11 @@ function FeedbackSessionHistoryCard({ session }: { session: FeedbackSessionItem 
       <div className="divide-y divide-slate-100">
         {session.feedbacks.map((fb) => (
           <div key={fb.aspect} className="flex items-start gap-3 px-5 py-3.5">
-            <div className="flex min-w-[110px] items-center gap-2">
+            <div className="flex min-w-[110px] flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-slate-500">
-                {feedbackAspectLabelMap[fb.aspect]}
+                {isLegacyAspect(fb.aspect)
+                  ? feedbackAspectLabelMap[fb.aspect]
+                  : `Nilai ${formatAverageScore(getAverageScore(fb.ratings))}`}
               </span>
               {fb.sentiment ? (
                 <span

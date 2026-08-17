@@ -324,6 +324,13 @@ async function seedCompletedSession({ studentProfileId, subjectId, tryoutId, ans
     })),
   });
 
+  // Guru yang dinilai diambil dari pembuat tryout, sama seperti alur produksi
+  // di app/siswa/tanggapan/_actions.ts.
+  const tryout = await prisma.tryout.findUnique({
+    where: { id: tryoutId },
+    select: { createdByTeacherId: true },
+  });
+
   for (const fp of feedbackPlan) {
     const feedback = await prisma.feedback.upsert({
       where: {
@@ -334,10 +341,22 @@ async function seedCompletedSession({ studentProfileId, subjectId, tryoutId, ans
         comment: fp.comment,
         studentId: studentProfileId,
         subjectId,
+        teacherId: tryout?.createdByTeacherId ?? null,
         tryoutSessionId: session.id,
       },
-      update: { comment: fp.comment },
+      update: { comment: fp.comment, teacherId: tryout?.createdByTeacherId ?? null },
     });
+
+    if (fp.ratings) {
+      await prisma.feedbackRating.deleteMany({ where: { feedbackId: feedback.id } });
+      await prisma.feedbackRating.createMany({
+        data: fp.ratings.map((score, index) => ({
+          feedbackId: feedback.id,
+          itemNumber: index + 1,
+          score,
+        })),
+      });
+    }
 
     await prisma.sentimentAnalysis.upsert({
       where: { feedbackId: feedback.id },
@@ -591,7 +610,9 @@ const bahasaIndonesiaAnswerPlans = {
 
 // ─── Feedback Templates ───────────────────────────────────────────────────────
 
-const feedbackTemplates = {
+// Format lama: satu tanggapan teks untuk tiap aspek pembelajaran. Masih dipakai
+// beberapa sesi pada seed agar jalur data historis ikut teruji.
+const legacyFeedbackTemplates = {
   positif: {
     [LearningAspect.MATERI]:
       "Materi yang diajarkan sangat jelas dan mudah dipahami. Penjelasannya runtut dan terstruktur sehingga saya bisa mengikuti dengan baik.",
@@ -610,91 +631,86 @@ const feedbackTemplates = {
   },
 };
 
+// Format sekarang: penilaian memakai skala Likert, tanggapan teksnya satu saja.
+const feedbackComments = {
+  positif: [
+    "Penjelasan gurunya runtut dan enak diikuti, contohnya juga banyak sehingga saya mudah memahami materinya.",
+    "Guru selalu memberi kesempatan bertanya dan menjawab dengan sabar, jadi saya tidak takut kalau belum paham.",
+    "Soal tryoutnya sesuai dengan yang diajarkan di kelas dan sangat membantu saya mengukur pemahaman sendiri.",
+  ],
+  negatif: [
+    "Penjelasannya terlalu cepat sehingga saya sering tertinggal dan harus mencari materi tambahan sendiri di rumah.",
+    "Soal tryoutnya jauh lebih sulit daripada contoh yang dibahas di kelas, jadi saya kesulitan mengerjakannya.",
+    "Materi yang disampaikan kurang lengkap dan beberapa bagian penting tidak sempat dijelaskan sampai selesai.",
+  ],
+};
+
 const labelConfidence = {
   [SentimentLabel.POSITIF]: 0.88,
   [SentimentLabel.NEGATIF]: 0.86,
 };
 
-function makeFeedbackPlan(plan) {
+const likertScores = {
+  [SentimentLabel.POSITIF]: [
+    [5, 5, 4, 4, 5],
+    [4, 5, 4, 4, 4],
+    [5, 4, 5, 4, 5],
+  ],
+  [SentimentLabel.NEGATIF]: [
+    [2, 3, 2, 2, 3],
+    [2, 2, 3, 1, 2],
+    [3, 3, 2, 2, 2],
+  ],
+};
+
+function makeLegacyFeedbackPlan(plan) {
   return Object.entries(plan).map(([aspect, label]) => ({
     aspect,
-    comment: feedbackTemplates[label === SentimentLabel.POSITIF ? "positif" : "negatif"][aspect],
+    comment:
+      legacyFeedbackTemplates[label === SentimentLabel.POSITIF ? "positif" : "negatif"][aspect],
     confidence: labelConfidence[label],
     label,
   }));
 }
 
+function makeFeedbackPlan({ label, variant }) {
+  const tone = label === SentimentLabel.POSITIF ? "positif" : "negatif";
+  const comments = feedbackComments[tone];
+  const scores = likertScores[label];
+
+  return [
+    {
+      aspect: LearningAspect.UMUM,
+      comment: comments[variant % comments.length],
+      confidence: labelConfidence[label],
+      label,
+      ratings: scores[variant % scores.length],
+    },
+  ];
+}
+
 // ─── Session Plans ────────────────────────────────────────────────────────────
 
 /*
-  Distribution yang dihasilkan (total 24 sentimen, 8 sesi × 3 aspek,
-  klasifikasi biner positif/negatif):
+  Delapan sesi tryout dengan dua format umpan balik yang hidup berdampingan:
 
-  MATERI:      6 Positif, 2 Negatif
-  PENYAMPAIAN: 6 Positif, 2 Negatif
-  SOAL:        5 Positif, 3 Negatif
-  ──────────────────────────────────
-  TOTAL:       17 Positif, 7 Negatif
+  - 6 sesi memakai format sekarang (skala Likert + satu tanggapan teks).
+  - 2 sesi memakai format lama (tiga tanggapan teks per aspek), supaya jalur
+    render data historis ikut teruji setelah perubahan format.
+
+  Distribusi sentimen: 8 positif, 4 negatif (total 12 baris umpan balik).
 */
 const sessionPlans = [
-  {
-    student: "aulia",
-    subject: "agama",
-    feedbackPlan: {
-      [LearningAspect.MATERI]: SentimentLabel.POSITIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
-      [LearningAspect.SOAL]: SentimentLabel.POSITIF,
-    },
-  },
-  {
-    student: "rizki",
-    subject: "agama",
-    feedbackPlan: {
-      [LearningAspect.MATERI]: SentimentLabel.NEGATIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.NEGATIF,
-      [LearningAspect.SOAL]: SentimentLabel.NEGATIF,
-    },
-  },
-  {
-    student: "dewi",
-    subject: "agama",
-    feedbackPlan: {
-      [LearningAspect.MATERI]: SentimentLabel.POSITIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
-      [LearningAspect.SOAL]: SentimentLabel.POSITIF,
-    },
-  },
-  {
-    student: "aulia",
-    subject: "matematika",
-    feedbackPlan: {
-      [LearningAspect.MATERI]: SentimentLabel.POSITIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.NEGATIF,
-      [LearningAspect.SOAL]: SentimentLabel.NEGATIF,
-    },
-  },
-  {
-    student: "rizki",
-    subject: "matematika",
-    feedbackPlan: {
-      [LearningAspect.MATERI]: SentimentLabel.POSITIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
-      [LearningAspect.SOAL]: SentimentLabel.POSITIF,
-    },
-  },
-  {
-    student: "dewi",
-    subject: "matematika",
-    feedbackPlan: {
-      [LearningAspect.MATERI]: SentimentLabel.NEGATIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
-      [LearningAspect.SOAL]: SentimentLabel.NEGATIF,
-    },
-  },
+  { student: "aulia", subject: "agama", feedback: { label: SentimentLabel.POSITIF, variant: 0 } },
+  { student: "rizki", subject: "agama", feedback: { label: SentimentLabel.NEGATIF, variant: 0 } },
+  { student: "dewi", subject: "agama", feedback: { label: SentimentLabel.POSITIF, variant: 1 } },
+  { student: "aulia", subject: "matematika", feedback: { label: SentimentLabel.NEGATIF, variant: 1 } },
+  { student: "rizki", subject: "matematika", feedback: { label: SentimentLabel.POSITIF, variant: 2 } },
+  { student: "dewi", subject: "matematika", feedback: { label: SentimentLabel.POSITIF, variant: 0 } },
   {
     student: "aulia",
     subject: "bahasaIndonesia",
-    feedbackPlan: {
+    legacyFeedback: {
       [LearningAspect.MATERI]: SentimentLabel.POSITIF,
       [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
       [LearningAspect.SOAL]: SentimentLabel.POSITIF,
@@ -703,9 +719,9 @@ const sessionPlans = [
   {
     student: "rizki",
     subject: "bahasaIndonesia",
-    feedbackPlan: {
+    legacyFeedback: {
       [LearningAspect.MATERI]: SentimentLabel.POSITIF,
-      [LearningAspect.PENYAMPAIAN]: SentimentLabel.POSITIF,
+      [LearningAspect.PENYAMPAIAN]: SentimentLabel.NEGATIF,
       [LearningAspect.SOAL]: SentimentLabel.POSITIF,
     },
   },
@@ -809,7 +825,9 @@ async function main() {
 
     await seedCompletedSession({
       answerPlan,
-      feedbackPlan: makeFeedbackPlan(plan.feedbackPlan),
+      feedbackPlan: plan.legacyFeedback
+        ? makeLegacyFeedbackPlan(plan.legacyFeedback)
+        : makeFeedbackPlan(plan.feedback),
       studentProfileId: student.id,
       subjectId: subject.id,
       tryoutId: tryout.id,
@@ -834,7 +852,7 @@ async function main() {
   console.log("");
   console.log("Data tersedia:");
   console.log("  3 mata pelajaran, 15 soal, 3 tryout (published)");
-  console.log("  8 sesi tryout selesai, 24 feedback, 24 sentimen teranalisis");
+  console.log("  8 sesi tryout selesai, 12 feedback (6 format Likert + 6 format lama), 12 sentimen teranalisis");
   console.log("  Distribusi: ~13 Positif, ~5 Negatif, ~6 Netral");
   console.log("─────────────────────────────────────");
 }

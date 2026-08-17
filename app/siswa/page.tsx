@@ -3,11 +3,7 @@ import { Prisma, TryoutStatus } from "@prisma/client";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import {
-  REQUIRED_FEEDBACK_ASPECT_COUNT,
-  getFeedbackCompletionCount,
-  isFeedbackComplete,
-} from "@/lib/student-feedback";
+import { isFeedbackComplete } from "@/lib/student-feedback";
 
 export default async function SiswaPage() {
   const session = await getCurrentSession();
@@ -238,14 +234,14 @@ export default async function SiswaPage() {
             Ringkasan tryout, hasil terbaru, dan aktivitas belajar yang perlu kamu tindak lanjuti.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* <div className="flex flex-wrap items-center gap-2.5">
           <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600">
             Hari ini
           </span>
           <span className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(37,99,235,0.2)]">
             Fokus Periode
           </span>
-        </div>
+        </div> */}
       </section>
 
       <section className="grid gap-4 xl:grid-cols-4">
@@ -305,71 +301,42 @@ export default async function SiswaPage() {
           </div>
 
           <div className="mt-6 rounded-[1.6rem] border border-slate-200/80 bg-slate-50/85 p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-700">Snapshot Belajar</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">
-                  Visual ringkas untuk tryout, progres, hasil, dan umpan balik pembelajaran.
-                </p>
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-                Responsive
-              </span>
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Snapshot Belajar</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                Seberapa jauh tryout dan tanggapanmu sudah diselesaikan.
+              </p>
             </div>
 
-            <div className="mt-6 flex min-h-[220px] items-end justify-between gap-3 sm:gap-4">
-              <StatisticBar
-                color="linear-gradient(180deg, #fb923c 0%, #fcd34d 100%)"
-                heightPercent={Math.max(24, Math.min(100, availableTryoutCount * 20))}
-                label="Tryout"
-                value={String(availableTryoutCount)}
+            <div className="mt-5 space-y-4">
+              <ProgressMeter
+                accent="blue"
+                caption={`${completedTryoutCount} dari ${availableTryoutCount} tryout sudah dikerjakan`}
+                label="Progres belajar"
+                percent={completionRate}
               />
-              <StatisticBar
-                color="linear-gradient(180deg, #2563eb 0%, #38bdf8 100%)"
-                heightPercent={Math.max(24, completionRate)}
-                label="Progres"
-                value={`${completionRate}%`}
-              />
-              <StatisticBar
-                color="linear-gradient(180deg, #10b981 0%, #86efac 100%)"
-                heightPercent={Math.max(24, Math.min(100, completedTryoutCount * 18))}
-                label="Hasil"
-                value={String(completedTryoutCount)}
-              />
-              <StatisticBar
-                color="linear-gradient(180deg, #d946ef 0%, #f9a8d4 100%)"
-                heightPercent={Math.max(18, feedbackCompletionRate)}
-                label="Feedback"
-                value={`${feedbackCompletionRate}%`}
+              <ProgressMeter
+                accent="emerald"
+                caption={`${feedbackCompletionCount} dari ${completedTryoutCount} sesi sudah kamu tanggapi`}
+                label="Tanggapan terkirim"
+                percent={feedbackCompletionRate}
               />
             </div>
-          </div>
 
-          <div className="mt-6 space-y-3">
-            <LegendRow
-              color="bg-blue-500"
-              label="Progres belajar"
-              meta={`${completedTryoutCount} sesi selesai`}
-              value={`${completionRate}%`}
-            />
-            <LegendRow
-              color="bg-emerald-400"
-              label="Feedback terselesaikan"
-              meta={`${feedbackCompletionCount} dari ${completedTryoutCount || 0} sesi`}
-              value={`${feedbackCompletionRate}%`}
-            />
-            <LegendRow
-              color="bg-orange-400"
-              label="Tryout aktif"
-              meta="Siap dikerjakan"
-              value={String(availableTryoutCount)}
-            />
-            <LegendRow
-              color="bg-fuchsia-400"
-              label="Feedback menunggu"
-              meta="Perlu ditindaklanjuti"
-              value={String(pendingFeedbackCount)}
-            />
+            <div className="mt-5 grid gap-2 border-t border-slate-200/80 pt-4 sm:grid-cols-2">
+              <SnapshotCountRow
+                helper="Siap dikerjakan"
+                label="Tryout aktif"
+                tone="orange"
+                value={availableTryoutCount}
+              />
+              <SnapshotCountRow
+                helper="Perlu kamu isi"
+                label="Tanggapan menunggu"
+                tone="fuchsia"
+                value={pendingFeedbackCount}
+              />
+            </div>
           </div>
         </div>
 
@@ -384,9 +351,9 @@ export default async function SiswaPage() {
                 Lihat hasil terakhir, paket tryout yang tersedia, dan daftar tanggapan yang masih perlu kamu isi.
               </p>
             </div>
-            <div className="inline-flex rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
+            {/* <div className="inline-flex rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
               Periode belajar aktif
-            </div>
+            </div> */}
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -460,28 +427,25 @@ export default async function SiswaPage() {
             </div>
           ) : (
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {tryoutCards.map((tryout, index) => (
+              {tryoutCards.map((tryout) => (
                 <article
                   key={tryout.id}
-                  className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_16px_36px_rgba(37,99,235,0.08)]"
-                >
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                      index % 3 === 0
-                        ? "bg-blue-100 text-blue-700"
-                        : index % 3 === 1
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-orange-100 text-orange-700"
-                    }`}
-                  >
+                  className="flex h-full flex-col rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_16px_36px_rgba(37,99,235,0.08)]">
+                  <span className="inline-flex self-start rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                     {tryout.subject.name}
                   </span>
-                  <h3 className="mt-4 text-lg font-semibold text-slate-950">{tryout.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+
+                  {/* Judul dan deskripsi dikunci dua baris supaya baris chip dan
+                      tombol pada semua kartu berada di ketinggian yang sama. */}
+                  <h3 className="mt-4 line-clamp-2 min-h-14 text-lg font-semibold leading-7 text-slate-950">
+                    {tryout.title}
+                  </h3>
+                  <p className="mt-2 line-clamp-2 min-h-12 text-sm leading-6 text-slate-600">
                     {tryout.description?.trim()
                       ? tryout.description
                       : `${tryout._count.tryoutQuestions} soal siap dikerjakan.`}
                   </p>
+
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
                     <span className="rounded-full bg-slate-100 px-3 py-1">
                       {tryout._count.tryoutQuestions} soal
@@ -492,12 +456,17 @@ export default async function SiswaPage() {
                       </span>
                     ) : null}
                   </div>
-                  <Link
-                    href={`/siswa/tryout/${tryout.id}`}
-                    className="mt-5 inline-flex items-center rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#3b82f6_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_26px_rgba(37,99,235,0.2)] transition hover:translate-y-[-1px]"
-                  >
-                    Lihat Tryout
-                  </Link>
+
+                  {/* mt-auto menahan tombol tetap di dasar kartu walau isi di
+                      atasnya lebih pendek, jadi tombol semua kartu sejajar. */}
+                  <div className="mt-auto pt-5">
+                    <Link
+                      href={`/siswa/tryout/${tryout.id}`}
+                      className="inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500"
+                    >
+                      Lihat Tryout
+                    </Link>
+                  </div>
                 </article>
               ))}
             </div>
@@ -554,7 +523,6 @@ export default async function SiswaPage() {
                 pendingFeedbackSessions.map((session) => (
                   <PendingFeedbackCard
                     key={session.id}
-                    completionCount={getFeedbackCompletionCount(session.feedbacks)}
                     sessionId={session.id}
                     subjectName={session.tryout.subject.name}
                     title={session.tryout.title}
@@ -626,7 +594,7 @@ function StudentMetricCard({
         </span>
       </div>
       <p className="mt-4 text-sm font-semibold text-slate-500">{label}</p>
-      <p className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">{value}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
       <p className="mt-2 text-sm leading-6 text-slate-500">{helper}</p>
     </div>
   );
@@ -665,60 +633,72 @@ function StatMiniCard({
   );
 }
 
-function LegendRow({
-  color,
+/**
+ * Meter untuk satu rasio terhadap batasnya sendiri (0–100%). Dipakai alih-alih
+ * diagram batang karena angka-angka pada kartu ini satuannya berbeda-beda:
+ * menaruh jumlah tryout dan persentase progres pada satu sumbu membuat
+ * tingginya tampak bisa dibandingkan padahal tidak.
+ */
+function ProgressMeter({
+  accent,
+  caption,
   label,
-  meta,
-  value,
+  percent,
 }: {
-  color: string;
+  accent: "blue" | "emerald";
+  caption: string;
   label: string;
-  meta: string;
-  value: string;
+  percent: number;
 }) {
+  const safePercent = Math.max(0, Math.min(100, percent));
+  const fillClass = accent === "emerald" ? "bg-emerald-500" : "bg-blue-600";
+
   return (
-    <div className="flex items-center justify-between rounded-[1.2rem] border border-slate-200/80 bg-slate-50/70 px-4 py-3">
-      <div className="flex items-center gap-2">
-        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-        <div>
-          <p className="text-sm text-slate-600">{label}</p>
-          <p className="text-xs text-slate-400">{meta}</p>
-        </div>
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm font-medium text-slate-700">{label}</p>
+        <p className="text-sm font-semibold tabular-nums text-slate-950">{safePercent}%</p>
       </div>
-      <span className="text-sm font-semibold text-slate-950">{value}</span>
+      <div
+        className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200/80"
+        role="img"
+        aria-label={`${label}: ${safePercent} persen. ${caption}.`}
+      >
+        {safePercent > 0 && (
+          <div
+            className={`h-full rounded-full transition-[width] duration-500 ${fillClass}`}
+            style={{ width: `${safePercent}%` }}
+          />
+        )}
+      </div>
+      <p className="mt-2 text-xs leading-5 text-slate-400">{caption}</p>
     </div>
   );
 }
 
-function StatisticBar({
-  color,
-  heightPercent,
+function SnapshotCountRow({
+  helper,
   label,
+  tone,
   value,
 }: {
-  color: string;
-  heightPercent: number;
+  helper: string;
   label: string;
-  value: string;
+  tone: "fuchsia" | "orange";
+  value: number;
 }) {
+  const dotClass = tone === "fuchsia" ? "bg-fuchsia-500" : "bg-orange-500";
+
   return (
-    <div className="flex min-w-0 flex-1 flex-col items-center justify-end gap-3">
-      <span className="text-sm font-semibold text-slate-700">{value}</span>
-      <div className="relative flex h-[150px] w-full items-end justify-center overflow-hidden rounded-[1.5rem] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-2 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.85)] sm:h-[170px]">
-        <div className="pointer-events-none absolute inset-x-2 top-6 h-px bg-slate-200/70" />
-        <div className="pointer-events-none absolute inset-x-2 top-1/2 h-px bg-slate-200/70" />
-        <div className="pointer-events-none absolute inset-x-2 bottom-6 h-px bg-slate-200/70" />
-        <div
-          className="relative z-[1] w-full rounded-[1.2rem] shadow-[0_14px_28px_rgba(15,23,42,0.1)] transition-[height] duration-500"
-          style={{
-            background: color,
-            height: `${heightPercent}%`,
-          }}
-        />
+    <div className="flex items-center justify-between gap-3 rounded-[1.1rem] bg-white px-3.5 py-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />
+        <div className="min-w-0">
+          <p className="truncate text-sm text-slate-700">{label}</p>
+          <p className="truncate text-xs text-slate-400">{helper}</p>
+        </div>
       </div>
-      <span className="text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-        {label}
-      </span>
+      <span className="text-lg font-semibold tabular-nums text-slate-950">{value}</span>
     </div>
   );
 }
@@ -744,7 +724,7 @@ function StudentCreditCard({
   return (
     <div className={`rounded-[1.7rem] p-5 text-white shadow-[0_20px_40px_rgba(15,23,42,0.12)] ${accentClass}`}>
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">{label}</p>
-      <p className="mt-5 text-[1.65rem] font-semibold tracking-tight">{title}</p>
+      <p className="mt-5 text-2xl font-semibold tracking-tight">{title}</p>
       <p className="mt-2 text-sm text-white/80">{subtitle}</p>
     </div>
   );
@@ -773,12 +753,10 @@ function ResultActivityRow({
 }
 
 function PendingFeedbackCard({
-  completionCount,
   sessionId,
   subjectName,
   title,
 }: {
-  completionCount: number;
   sessionId: string;
   subjectName: string;
   title: string;
@@ -794,7 +772,7 @@ function PendingFeedbackCard({
           <p className="mt-1 text-sm text-slate-500">{subjectName}</p>
         </div>
         <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-orange-700">
-          {completionCount}/{REQUIRED_FEEDBACK_ASPECT_COUNT}
+          Belum diisi
         </span>
       </div>
     </Link>

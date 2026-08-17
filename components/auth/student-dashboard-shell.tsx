@@ -83,14 +83,14 @@ export function StudentDashboardShell({
 
   if (isExamRoute) {
     return (
-      <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#f6f8fc_100%)] text-slate-900">
+      <div className="student-scale min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#f6f8fc_100%)] text-slate-900">
         {children}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#f6f8fc_100%)] text-slate-900">
+    <div className="student-scale min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#f6f8fc_100%)] text-slate-900">
       {isSidebarOpen ? (
         <button
           type="button"
@@ -235,7 +235,7 @@ export function StudentDashboardShell({
                     <button
                       type="button"
                       onClick={() => setIsLearningMenuOpen((current) => !current)}
-                      className={`flex w-full items-center justify-between gap-3 rounded-full px-2 py-2 text-left text-[13px] font-medium transition ${
+                      className={`flex w-full items-center justify-between gap-3 rounded-full px-2 py-2 text-left text-sm font-medium transition ${
                         isLearningRoute
                           ? "bg-[#e8f0ff] text-blue-700"
                           : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
@@ -251,7 +251,7 @@ export function StudentDashboardShell({
                         </span>
                         <span
                           className={`transition-[max-width,opacity] duration-300 ${
-                            isSidebarCollapsedEffective ? "lg:max-w-0 lg:overflow-hidden lg:opacity-0" : "max-w-[180px] opacity-100"
+                            isSidebarCollapsedEffective ? "lg:max-w-0 lg:overflow-hidden lg:opacity-0" : "max-w-45 opacity-100"
                           }`}
                         >
                           Aktivitas Belajar
@@ -357,11 +357,6 @@ export function StudentDashboardShell({
                 </div>
 
                 <div className="flex flex-col gap-2.5 md:flex-row md:flex-wrap md:items-center md:justify-end">
-                  <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-400 shadow-inner shadow-white md:min-w-[250px] xl:min-w-[280px]">
-                    <SearchIcon />
-                    <span className="truncate">Cari tryout, hasil, atau aktivitas belajar</span>
-                  </div>
-
                   <div className="flex flex-wrap items-center gap-2.5">
                     <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 sm:inline-flex">
                       <WeatherIcon />
@@ -383,7 +378,7 @@ export function StudentDashboardShell({
 
           <main className="min-w-0 overflow-x-clip pb-6 lg:px-6 lg:pt-5">
             {children}
-            <footer className="mt-8 border-t border-slate-200/80 pt-5 text-center text-[13px] text-slate-400">
+            <footer className="mt-8 border-t border-slate-200/80 pt-5 text-center text-sm text-slate-400">
               <span>All Right Reserved. Created with </span>
               <span className="mx-1 inline-flex translate-y-[2px] text-rose-500">
                 <LoveIcon />

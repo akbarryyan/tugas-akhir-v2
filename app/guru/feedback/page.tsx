@@ -5,6 +5,7 @@ import { PageIntro, SearchToolbar, SectionCard, StatusAlert } from "@/app/admin/
 import { SentimentDistributionSection, type SentimentChartData } from "@/app/admin/_sentiment-charts";
 import { requireRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { countByLabel, groupCountsBy } from "@/lib/sentiment/aggregate";
 import {
   reanalyzeSingleSentimentAction,
   reanalyzeVisibleSentimentsAction,
@@ -36,15 +37,24 @@ export default async function GuruFeedbackPage({
     },
   });
 
+  // Tanggapan format baru menyimpan guru yang dinilai secara langsung. Baris
+  // lama yang belum sempat terisi tetap dicakup lewat relasi mata pelajaran
+  // supaya riwayat guru tidak hilang dari halaman ini.
   const teacherSubjectFilter = teacherProfile
     ? {
-        subject: {
-          subjectTeachers: {
-            some: {
-              teacherId: teacherProfile.id,
+        OR: [
+          { teacherId: teacherProfile.id },
+          {
+            teacherId: null,
+            subject: {
+              subjectTeachers: {
+                some: {
+                  teacherId: teacherProfile.id,
+                },
+              },
             },
           },
-        },
+        ],
       }
     : undefined;
 
@@ -52,49 +62,47 @@ export default async function GuruFeedbackPage({
     teacherProfile
     ? prisma.feedback.findMany({
         where: {
-          subject: {
-            subjectTeachers: {
-              some: {
-                teacherId: teacherProfile.id,
-              },
-            },
-          },
-          ...(query
-            ? {
-                OR: [
+          AND: [
+            teacherSubjectFilter ?? {},
+            ...(query
+              ? [
                   {
-                    comment: {
-                      contains: query,
-                    },
-                  },
-                  {
-                    student: {
-                      user: {
-                        name: {
+                    OR: [
+                      {
+                        comment: {
                           contains: query,
                         },
                       },
-                    },
-                  },
-                  {
-                    subject: {
-                      name: {
-                        contains: query,
-                      },
-                    },
-                  },
-                  {
-                    tryoutSession: {
-                      tryout: {
-                        title: {
-                          contains: query,
+                      {
+                        student: {
+                          user: {
+                            name: {
+                              contains: query,
+                            },
+                          },
                         },
                       },
-                    },
+                      {
+                        subject: {
+                          name: {
+                            contains: query,
+                          },
+                        },
+                      },
+                      {
+                        tryoutSession: {
+                          tryout: {
+                            title: {
+                              contains: query,
+                            },
+                          },
+                        },
+                      },
+                    ],
                   },
-                ],
-              }
-            : {}),
+                ]
+              : []),
+          ],
         },
         select: {
           id: true,
@@ -161,7 +169,9 @@ export default async function GuruFeedbackPage({
             finalLabel: true,
             feedback: {
               select: {
-                aspect: true,
+                student: {
+                  select: { className: true },
+                },
                 subject: {
                   select: { id: true, name: true },
                 },
@@ -177,7 +187,32 @@ export default async function GuruFeedbackPage({
     (feedback) => feedback.sentiment?.labelSource === LabelSource.MANUAL,
   ).length;
 
-  const chartData = buildSentimentChartData(allSentimentStats);
+  const chartData: SentimentChartData = {
+    overall: countByLabel(allSentimentStats),
+    groups: [
+      {
+        title: "Distribusi per Mata Pelajaran",
+        description: "Sebaran label sentimen final pada masing-masing mata pelajaran.",
+        rows: groupCountsBy(
+          allSentimentStats,
+          (row) => ({ key: row.feedback.subject.id, label: row.feedback.subject.name }),
+          { limit: 8 },
+        ),
+      },
+      {
+        title: "Distribusi per Kelas",
+        description: "Sebaran label sentimen final pada masing-masing kelas siswa.",
+        rows: groupCountsBy(
+          allSentimentStats,
+          (row) => ({
+            key: row.feedback.student.className,
+            label: row.feedback.student.className,
+          }),
+          { limit: 8 },
+        ),
+      },
+    ],
+  };
 
   return (
     <div className="space-y-6">
@@ -214,7 +249,7 @@ export default async function GuruFeedbackPage({
         <div className="mb-5">
           <p className="text-sm font-semibold text-slate-900">Distribusi Sentimen</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Sebaran label sentimen final pada mata pelajaran yang Anda ampu, dikelompokkan per aspek pembelajaran dan per mapel.
+            Sebaran label sentimen final pada umpan balik yang ditujukan kepada Anda, dikelompokkan per mata pelajaran dan per kelas.
           </p>
         </div>
         <SentimentDistributionSection data={chartData} />
@@ -524,51 +559,4 @@ function formatDateTime(date: Date) {
   }).format(date);
 }
 
-type SentimentStatRow = {
-  finalLabel: SentimentLabel;
-  feedback: {
-    aspect: LearningAspect;
-    subject: { id: string; name: string };
-  };
-};
-
-function buildSentimentChartData(rows: SentimentStatRow[]): SentimentChartData {
-  const overall = { positif: 0, negatif: 0 };
-  const aspectMap = new Map<LearningAspect, { positif: number; negatif: number }>();
-  const subjectMap = new Map<string, { name: string; positif: number; negatif: number }>();
-
-  for (const row of rows) {
-    const label = row.finalLabel;
-    const aspect = row.feedback.aspect;
-    const subjectId = row.feedback.subject.id;
-    const subjectName = row.feedback.subject.name;
-
-    if (label === SentimentLabel.POSITIF) overall.positif++;
-    else overall.negatif++;
-
-    if (!aspectMap.has(aspect)) aspectMap.set(aspect, { positif: 0, negatif: 0 });
-    const ac = aspectMap.get(aspect)!;
-    if (label === SentimentLabel.POSITIF) ac.positif++;
-    else ac.negatif++;
-
-    if (!subjectMap.has(subjectId)) subjectMap.set(subjectId, { name: subjectName, positif: 0, negatif: 0 });
-    const sc = subjectMap.get(subjectId)!;
-    if (label === SentimentLabel.POSITIF) sc.positif++;
-    else sc.negatif++;
-  }
-
-  const byAspect = ([LearningAspect.MATERI, LearningAspect.PENYAMPAIAN, LearningAspect.SOAL] as const).map(
-    (aspect) => {
-      const counts = aspectMap.get(aspect) ?? { positif: 0, negatif: 0 };
-      return { label: feedbackAspectLabelMap[aspect], counts };
-    },
-  );
-
-  const bySubject = Array.from(subjectMap.values())
-    .sort((a, b) => (b.positif + b.negatif) - (a.positif + a.negatif))
-    .slice(0, 8)
-    .map(({ name, positif, negatif }) => ({ label: name, counts: { positif, negatif } }));
-
-  return { overall, byAspect, bySubject };
-}
 

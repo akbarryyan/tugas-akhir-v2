@@ -34,9 +34,11 @@ function getPrismaInstance() {
 
   const nextPrisma = createPrismaClient();
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = nextPrisma;
-  }
+  // Wajib di-cache pada semua environment. Tanpa ini, setiap akses properti
+  // pada proxy di bawah akan membuat PrismaClient baru beserta connection pool
+  // sendiri, sehingga satu halaman yang menjalankan beberapa query paralel
+  // dapat menghabiskan kuota koneksi database ("Too many connections").
+  globalForPrisma.prisma = nextPrisma;
 
   return nextPrisma;
 }

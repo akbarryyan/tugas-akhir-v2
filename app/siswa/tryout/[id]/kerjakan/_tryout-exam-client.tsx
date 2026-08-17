@@ -218,7 +218,7 @@ export function TryoutExamClient({
                     Alokasi Waktu
                   </p>
                   <div className="mt-3 flex flex-wrap items-end gap-3">
-                    <span className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-[2.8rem]">
+                    <span className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
                       {durationMinutes ? durationMinutes : "∞"}
                     </span>
                     <span className="pb-1 text-sm font-medium text-slate-500">
@@ -396,7 +396,7 @@ export function TryoutExamClient({
                 </span>
               ) : null}
             </div>
-            <p className="mt-5 text-base leading-8 text-slate-800 sm:text-[1.03rem]">
+            <p className="mt-5 text-base leading-8 text-slate-800 sm:text-lg">
               {currentQuestion.question.questionText}
             </p>
 

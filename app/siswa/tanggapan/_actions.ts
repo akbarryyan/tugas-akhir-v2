@@ -7,18 +7,32 @@ import { z } from "zod";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { predictSentiment } from "@/lib/nlp/sentiment-analysis";
 import {
-  REQUIRED_FEEDBACK_ASPECTS,
-} from "@/lib/student-feedback";
+  getLikertFieldName,
+  LIKERT_ITEMS,
+  LIKERT_MAX_SCORE,
+  LIKERT_MIN_SCORE,
+} from "@/lib/feedback-likert";
+import { predictSentiment } from "@/lib/nlp/sentiment-analysis";
+
+const likertScoreSchema = z.coerce
+  .number({ message: "Semua pernyataan penilaian wajib diisi." })
+  .int("Nilai penilaian tidak valid.")
+  .min(LIKERT_MIN_SCORE, `Nilai penilaian minimal ${LIKERT_MIN_SCORE}.`)
+  .max(LIKERT_MAX_SCORE, `Nilai penilaian maksimal ${LIKERT_MAX_SCORE}.`);
 
 const feedbackFormSchema = z.object({
-  materi: z.string().trim().min(5, "Tanggapan aspek materi minimal 5 karakter."),
-  penyampaian: z
+  comment: z
     .string()
     .trim()
-    .min(5, "Tanggapan aspek penyampaian minimal 5 karakter."),
-  soal: z.string().trim().min(5, "Tanggapan aspek soal minimal 5 karakter."),
+    .min(10, "Tanggapan minimal 10 karakter.")
+    .max(5000, "Tanggapan maksimal 5000 karakter."),
+  ratings: z.array(
+    z.object({
+      itemNumber: z.number().int(),
+      score: likertScoreSchema,
+    }),
+  ),
   tryoutSessionId: z.string().trim().min(1, "Sesi tryout tidak valid."),
 });
 
@@ -43,7 +57,7 @@ function getErrorMessage(error: unknown) {
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
-      return "Umpan balik untuk aspek yang sama sudah ada. Muat ulang halaman lalu coba lagi.";
+      return "Tanggapan untuk sesi tryout ini sudah ada. Muat ulang halaman lalu coba lagi.";
     }
   }
 
@@ -52,6 +66,34 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Terjadi kesalahan saat menyimpan umpan balik pembelajaran.";
+}
+
+/**
+ * Menentukan guru yang dinilai oleh tanggapan ini. Sumber utamanya adalah guru
+ * pembuat tryout. Bila kolom itu kosong (tryout lama), guru masih bisa
+ * dipastikan selama mata pelajaran tersebut hanya diampu satu orang; kalau
+ * diampu lebih dari satu, tanggapan sengaja dibiarkan tanpa guru daripada
+ * dibebankan ke orang yang salah.
+ */
+async function resolveEvaluatedTeacherId(params: {
+  createdByTeacherId: string | null;
+  subjectId: string;
+}) {
+  if (params.createdByTeacherId) {
+    return params.createdByTeacherId;
+  }
+
+  const subjectTeachers = await prisma.subjectTeacher.findMany({
+    where: {
+      subjectId: params.subjectId,
+    },
+    select: {
+      teacherId: true,
+    },
+    take: 2,
+  });
+
+  return subjectTeachers.length === 1 ? subjectTeachers[0].teacherId : null;
 }
 
 async function analyzeFeedbackAndPersistSentiment(params: {
@@ -113,9 +155,11 @@ export async function submitStudentFeedbackAction(formData: FormData) {
     }
 
     const parsed = feedbackFormSchema.parse({
-      materi: formData.get("materi"),
-      penyampaian: formData.get("penyampaian"),
-      soal: formData.get("soal"),
+      comment: formData.get("comment"),
+      ratings: LIKERT_ITEMS.map((item) => ({
+        itemNumber: item.number,
+        score: formData.get(getLikertFieldName(item.number)),
+      })),
       tryoutSessionId,
     });
 
@@ -149,6 +193,7 @@ export async function submitStudentFeedbackAction(formData: FormData) {
             id: true,
             title: true,
             subjectId: true,
+            createdByTeacherId: true,
             subject: {
               select: {
                 name: true,
@@ -163,51 +208,58 @@ export async function submitStudentFeedbackAction(formData: FormData) {
       throw new Error("Sesi tryout untuk pengisian umpan balik tidak ditemukan.");
     }
 
-    const commentsByAspect: Record<LearningAspect, string> = {
-      [LearningAspect.MATERI]: parsed.materi,
-      [LearningAspect.PENYAMPAIAN]: parsed.penyampaian,
-      [LearningAspect.SOAL]: parsed.soal,
-    };
-
-    const upsertedFeedbacks = await prisma.$transaction(async (tx) => {
-      const feedbacks = [];
-
-      for (const aspect of REQUIRED_FEEDBACK_ASPECTS) {
-        const feedback = await tx.feedback.upsert({
-          where: {
-            tryoutSessionId_aspect: {
-              aspect,
-              tryoutSessionId: tryoutSession.id,
-            },
-          },
-          create: {
-            aspect,
-            comment: commentsByAspect[aspect],
-            studentId: studentProfile.id,
-            subjectId: tryoutSession.tryout.subjectId,
-            tryoutSessionId: tryoutSession.id,
-          },
-          update: {
-            comment: commentsByAspect[aspect],
-          },
-        });
-
-        feedbacks.push(feedback);
-      }
-
-      return feedbacks;
+    const teacherId = await resolveEvaluatedTeacherId({
+      createdByTeacherId: tryoutSession.tryout.createdByTeacherId,
+      subjectId: tryoutSession.tryout.subjectId,
     });
 
-    await Promise.all(
-      upsertedFeedbacks.map((feedback) =>
-        analyzeFeedbackAndPersistSentiment({
-          aspect: feedback.aspect,
-          comment: feedback.comment,
+    const upsertedFeedback = await prisma.$transaction(async (tx) => {
+      const feedback = await tx.feedback.upsert({
+        where: {
+          tryoutSessionId_aspect: {
+            aspect: LearningAspect.UMUM,
+            tryoutSessionId: tryoutSession.id,
+          },
+        },
+        create: {
+          aspect: LearningAspect.UMUM,
+          comment: parsed.comment,
+          studentId: studentProfile.id,
+          subjectId: tryoutSession.tryout.subjectId,
+          teacherId,
+          tryoutSessionId: tryoutSession.id,
+        },
+        update: {
+          comment: parsed.comment,
+          teacherId,
+        },
+      });
+
+      // Ditulis ulang seluruhnya supaya pengisian berikutnya tidak menyisakan
+      // skor lama bila jumlah butir pernyataan berubah di kemudian hari.
+      await tx.feedbackRating.deleteMany({
+        where: {
           feedbackId: feedback.id,
-          subjectName: tryoutSession.tryout.subject.name,
-        }),
-      ),
-    );
+        },
+      });
+
+      await tx.feedbackRating.createMany({
+        data: parsed.ratings.map((rating) => ({
+          feedbackId: feedback.id,
+          itemNumber: rating.itemNumber,
+          score: rating.score,
+        })),
+      });
+
+      return feedback;
+    });
+
+    await analyzeFeedbackAndPersistSentiment({
+      aspect: upsertedFeedback.aspect,
+      comment: upsertedFeedback.comment,
+      feedbackId: upsertedFeedback.id,
+      subjectName: tryoutSession.tryout.subject.name,
+    });
 
     successData = {
       sessionId: tryoutSession.id,

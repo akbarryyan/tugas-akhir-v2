@@ -8,7 +8,7 @@ vi.mock("@/lib/db/prisma", () => ({
       findFirst: vi.fn(),
     },
     sentimentAnalysis: {
-      update: vi.fn(),
+      upsert: vi.fn(),
     },
     teacherProfile: {
       findUnique: vi.fn(),
@@ -59,7 +59,7 @@ function redirectUrl(error: unknown) {
 
 const mockedFindFirst = vi.mocked(prisma.feedback.findFirst);
 const mockedFindMany = vi.mocked(prisma.feedback.findMany);
-const mockedUpdate = vi.mocked(prisma.sentimentAnalysis.update);
+const mockedUpsert = vi.mocked(prisma.sentimentAnalysis.upsert);
 const mockedTeacherFindUnique = vi.mocked(prisma.teacherProfile.findUnique);
 const mockedRecordActivity = vi.mocked(recordAdminActivity);
 const mockedGetSession = vi.mocked(getCurrentSession);
@@ -175,18 +175,29 @@ describe("reanalyzeSingleSentimentAction — error paths", () => {
     expect(mockedPredict).not.toHaveBeenCalled();
   });
 
-  it("redirects with error when feedback has no sentiment", async () => {
+  it("creates the sentiment row when feedback has none yet", async () => {
     mockedGetSession.mockResolvedValueOnce(makeSession(Role.ADMIN));
     mockedFindFirst.mockResolvedValueOnce(
-      makeFeedback({ sentiment: null }),
+      makeFeedback({ id: "feedback-1", sentiment: null }),
     );
+    mockedPredict.mockResolvedValueOnce({
+      autoConfidence: 0.85,
+      autoLabel: SentimentLabel.POSITIF,
+      autoMethod: AutoMethod.NAIVE_BAYES,
+      modelVersion: "nb-v1",
+      preprocessedText: "materi jelas",
+    });
+    mockedUpsert.mockResolvedValueOnce({} as never);
 
     const error = await reanalyzeSingleSentimentAction(
-      makeFormData({ feedbackId: "fb-1" }),
+      makeFormData({ feedbackId: "feedback-1" }),
     ).catch((e) => e);
 
-    expect(redirectUrl(error)).toContain("tidak+ditemukan");
-    expect(mockedPredict).not.toHaveBeenCalled();
+    expect(redirectUrl(error)).toContain("type=success");
+    expect(mockedPredict).toHaveBeenCalledTimes(1);
+    expect(mockedUpsert.mock.calls[0][0].create).toEqual(
+      expect.objectContaining({ feedbackId: "feedback-1" }),
+    );
   });
 
   it("redirects with error when GURU has no teacher profile", async () => {
@@ -219,7 +230,7 @@ describe("reanalyzeSingleSentimentAction — AUTO label", () => {
       makeFeedback({ sentiment: { id: "sent-1", labelSource: LabelSource.AUTO, manualLabel: null } }),
     );
     mockedPredict.mockResolvedValue(makePrediction());
-    mockedUpdate.mockResolvedValue({} as any);
+    mockedUpsert.mockResolvedValue({} as any);
     mockedRecordActivity.mockResolvedValue(undefined);
   });
 
@@ -240,10 +251,10 @@ describe("reanalyzeSingleSentimentAction — AUTO label", () => {
       makeFormData({ feedbackId: "fb-1" }),
     ).catch(() => {});
 
-    expect(mockedUpdate).toHaveBeenCalledWith(
+    expect(mockedUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "sent-1" },
-        data: expect.objectContaining({
+        where: { feedbackId: "feedback-1" },
+        update: expect.objectContaining({
           autoLabel: SentimentLabel.POSITIF,
           autoConfidence: 0.85,
           finalLabel: SentimentLabel.POSITIF,
@@ -292,7 +303,7 @@ describe("reanalyzeSingleSentimentAction — MANUAL label preservation", () => {
       }),
     );
     mockedPredict.mockResolvedValue(makePrediction());
-    mockedUpdate.mockResolvedValue({} as any);
+    mockedUpsert.mockResolvedValue({} as any);
   });
 
   it("preserves MANUAL: updates autoLabel only, does NOT touch finalLabel/manualLabel", async () => {
@@ -300,7 +311,7 @@ describe("reanalyzeSingleSentimentAction — MANUAL label preservation", () => {
       makeFormData({ feedbackId: "fb-1" }),
     ).catch(() => {});
 
-    const updateData = mockedUpdate.mock.calls[0][0].data;
+    const updateData = mockedUpsert.mock.calls[0][0].update;
     expect(updateData).toHaveProperty("autoLabel", SentimentLabel.POSITIF);
     expect(updateData).toHaveProperty("autoConfidence", 0.85);
     expect(updateData).not.toHaveProperty("finalLabel");
@@ -317,7 +328,7 @@ describe("reanalyzeVisibleSentimentsAction — mass reanalyze", () => {
     vi.clearAllMocks();
     mockedGetSession.mockResolvedValue(makeSession(Role.ADMIN));
     mockedPredict.mockResolvedValue(makePrediction());
-    mockedUpdate.mockResolvedValue({} as any);
+    mockedUpsert.mockResolvedValue({} as any);
     mockedRecordActivity.mockResolvedValue(undefined);
   });
 
@@ -343,7 +354,7 @@ describe("reanalyzeVisibleSentimentsAction — mass reanalyze", () => {
     ).catch(() => {});
 
     expect(mockedPredict).toHaveBeenCalledTimes(2);
-    expect(mockedUpdate).toHaveBeenCalledTimes(2);
+    expect(mockedUpsert).toHaveBeenCalledTimes(2);
   });
 
   it("preserves MANUAL labels in mass reanalyze", async () => {
@@ -362,8 +373,8 @@ describe("reanalyzeVisibleSentimentsAction — mass reanalyze", () => {
       makeFormData({}),
     ).catch(() => {});
 
-    const manualUpdate = mockedUpdate.mock.calls[0][0].data;
-    const autoUpdate = mockedUpdate.mock.calls[1][0].data;
+    const manualUpdate = mockedUpsert.mock.calls[0][0].update;
+    const autoUpdate = mockedUpsert.mock.calls[1][0].update;
 
     expect(manualUpdate).not.toHaveProperty("finalLabel");
     expect(autoUpdate).toHaveProperty("finalLabel", SentimentLabel.POSITIF);
@@ -384,7 +395,10 @@ describe("reanalyzeVisibleSentimentsAction — mass reanalyze", () => {
     );
   });
 
-  it("skips feedbacks with null sentiment", async () => {
+  it("also analyses feedback that has no sentiment row yet", async () => {
+    // Terjadi ketika layanan analisis sedang mati saat siswa mengirim
+    // tanggapan. Baris seperti ini justru yang paling perlu dipulihkan, jadi
+    // reanalyze harus membuat baris sentimennya, bukan melewatinya.
     mockedFindMany.mockResolvedValueOnce([
       makeFeedback({ id: "fb-1", sentiment: null }),
       makeFeedback({ id: "fb-2", sentiment: { id: "sent-2", labelSource: LabelSource.AUTO, manualLabel: null } }),
@@ -394,8 +408,16 @@ describe("reanalyzeVisibleSentimentsAction — mass reanalyze", () => {
       makeFormData({}),
     ).catch(() => {});
 
-    expect(mockedPredict).toHaveBeenCalledTimes(1);
-    expect(mockedUpdate).toHaveBeenCalledTimes(1);
+    expect(mockedPredict).toHaveBeenCalledTimes(2);
+    expect(mockedUpsert).toHaveBeenCalledTimes(2);
+    expect(mockedUpsert.mock.calls[0][0].where).toEqual({ feedbackId: "fb-1" });
+    expect(mockedUpsert.mock.calls[0][0].create).toEqual(
+      expect.objectContaining({
+        feedbackId: "fb-1",
+        finalLabel: SentimentLabel.POSITIF,
+        labelSource: LabelSource.AUTO,
+      }),
+    );
   });
 });
 
@@ -404,7 +426,7 @@ describe("reanalyze — jalur sukses", () => {
     vi.clearAllMocks();
     mockedGetSession.mockResolvedValue(makeSession(Role.ADMIN));
     mockedPredict.mockResolvedValue(makePrediction());
-    mockedUpdate.mockResolvedValue({} as any);
+    mockedUpsert.mockResolvedValue({} as any);
     mockedRecordActivity.mockResolvedValue(undefined);
   });
 

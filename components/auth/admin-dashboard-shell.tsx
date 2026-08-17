@@ -35,6 +35,7 @@ const navigationItems = [
   { href: "/admin/tryout", label: "Tryout", icon: ClipboardIcon },
   { href: "/admin/pengampu", label: "Pengampu", icon: AssignmentIcon },
   { href: "/admin/feedback", label: "Review Sentimen", icon: MessageIcon },
+  { href: "/admin/laporan", label: "Laporan Evaluasi", icon: ReportIcon },
 ];
 
 const pageTitleByPath: Record<string, string> = {
@@ -47,6 +48,7 @@ const pageTitleByPath: Record<string, string> = {
   "/admin/profile": "Profil Admin",
   "/admin/aktivitas": "Riwayat Aktivitas",
   "/admin/feedback": "Review Sentimen",
+  "/admin/laporan": "Laporan Evaluasi",
 };
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
@@ -667,6 +669,18 @@ function MessageIcon() {
       <path d="M5.5 7.5A2.5 2.5 0 0 1 8 5h8a2.5 2.5 0 0 1 2.5 2.5v5A2.5 2.5 0 0 1 16 15H11l-3.5 3v-3H8A2.5 2.5 0 0 1 5.5 12.5v-5Z" />
       <path d="M9 9.5h6" />
       <path d="M9 12h4" />
+    </svg>
+  );
+}
+
+function ReportIcon() {
+  return (
+    <svg aria-hidden="true" {...iconProps()}>
+      <path d="M6 4.5h8.5L18 8v11.5H6z" />
+      <path d="M14 4.5V8h4" />
+      <path d="M9 16v-3" />
+      <path d="M12 16v-5" />
+      <path d="M15 16v-2" />
     </svg>
   );
 }

@@ -1,35 +1,35 @@
 import { LearningAspect } from "@prisma/client";
 
-export const REQUIRED_FEEDBACK_ASPECTS = [
+/**
+ * Aspek pembelajaran dipakai oleh umpan balik format lama, yaitu ketika siswa
+ * menulis satu tanggapan teks untuk masing-masing aspek. Format sekarang
+ * mengukur ketiga hal itu lewat skala Likert dan hanya menyisakan satu kolom
+ * teks, sehingga baris baru selalu memakai LearningAspect.UMUM. Peta label di
+ * bawah tetap dibutuhkan untuk menampilkan data historis.
+ */
+export const LEGACY_FEEDBACK_ASPECTS = [
   LearningAspect.MATERI,
   LearningAspect.PENYAMPAIAN,
   LearningAspect.SOAL,
 ] as const;
 
-export const REQUIRED_FEEDBACK_ASPECT_COUNT = REQUIRED_FEEDBACK_ASPECTS.length;
-
 export const feedbackAspectLabelMap: Record<LearningAspect, string> = {
   [LearningAspect.MATERI]: "Materi",
   [LearningAspect.PENYAMPAIAN]: "Penyampaian",
   [LearningAspect.SOAL]: "Soal",
+  [LearningAspect.UMUM]: "Tanggapan",
 };
 
-export function getFeedbackCompletionCount(
-  feedbacks: Array<{ aspect: LearningAspect }> | null | undefined,
-) {
-  return new Set((feedbacks ?? []).map((feedback) => feedback.aspect)).size;
+export function isLegacyAspect(aspect: LearningAspect) {
+  return aspect !== LearningAspect.UMUM;
 }
 
+/**
+ * Satu sesi tryout cukup diberi satu tanggapan. Sesi dianggap sudah ditanggapi
+ * begitu ada minimal satu baris umpan balik, termasuk baris format lama.
+ */
 export function isFeedbackComplete(
-  feedbacks: Array<{ aspect: LearningAspect }> | null | undefined,
+  feedbacks: Array<unknown> | null | undefined,
 ) {
-  return getFeedbackCompletionCount(feedbacks) >= REQUIRED_FEEDBACK_ASPECT_COUNT;
-}
-
-export function getMissingFeedbackAspects(
-  feedbacks: Array<{ aspect: LearningAspect }> | null | undefined,
-) {
-  const existingAspects = new Set((feedbacks ?? []).map((feedback) => feedback.aspect));
-
-  return REQUIRED_FEEDBACK_ASPECTS.filter((aspect) => !existingAspects.has(aspect));
+  return (feedbacks ?? []).length > 0;
 }

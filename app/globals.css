@@ -25,6 +25,29 @@ body {
   font-family: var(--font-hanken-grotesk), sans-serif;
 }
 
+/*
+  Skala teks khusus dashboard siswa.
+
+  Utilitas ukuran teks Tailwind v4 membaca variabel --text-*, sehingga menimpa
+  variabelnya di satu wadah akan mengecilkan seluruh teks di dalamnya sekaligus
+  tanpa perlu mengubah kelas satu per satu. Nilai line-height bawaan berupa
+  rasio, jadi tinggi barisnya ikut menyesuaikan dengan sendirinya.
+
+  Teks besar dikecilkan lebih banyak daripada teks kecil: ukuran display punya
+  ruang untuk dipangkas, sedangkan teks bantu sudah dekat batas keterbacaan.
+  --text-xs sengaja berhenti di 11px dan tidak diturunkan lagi.
+*/
+.student-scale {
+  --text-xs: 0.6875rem; /* 12px → 11px */
+  --text-sm: 0.8125rem; /* 14px → 13px */
+  --text-base: 0.9375rem; /* 16px → 15px */
+  --text-lg: 1.0625rem; /* 18px → 17px */
+  --text-xl: 1.125rem; /* 20px → 18px */
+  --text-2xl: 1.3125rem; /* 24px → 21px */
+  --text-3xl: 1.5rem; /* 30px → 24px */
+  --text-4xl: 1.75rem; /* 36px → 28px */
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

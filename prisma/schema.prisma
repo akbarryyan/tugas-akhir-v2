@@ -34,6 +34,7 @@ enum LearningAspect {
   MATERI
   PENYAMPAIAN
   SOAL
+  UMUM
 }
 
 enum SentimentLabel {
@@ -78,6 +79,7 @@ model TeacherProfile {
   createdQuestions Question[]
   createdBankSoals BankSoal[]       @relation("TeacherCreatedBankSoals")
   createdTryouts   Tryout[]         @relation("TeacherCreatedTryouts")
+  feedbacks        Feedback[]
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 }
@@ -258,19 +260,37 @@ model Feedback {
   id              String            @id @default(cuid())
   studentId       String
   subjectId       String
+  teacherId       String?
   tryoutSessionId String
   aspect          LearningAspect
   comment         String            @db.Text
   student         StudentProfile    @relation(fields: [studentId], references: [id], onDelete: Cascade)
   subject         Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher         TeacherProfile?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   tryoutSession   TryoutSession     @relation(fields: [tryoutSessionId], references: [id], onDelete: Cascade)
   sentiment       SentimentAnalysis?
+  ratings         FeedbackRating[]
   createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@unique([tryoutSessionId, aspect])
   @@index([studentId])
   @@index([subjectId])
+  @@index([teacherId])
   @@index([aspect])
+}
+
+model FeedbackRating {
+  id         String   @id @default(cuid())
+  feedbackId String
+  itemNumber Int
+  score      Int
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([feedbackId, itemNumber])
+  @@index([feedbackId])
 }
 
 model SentimentAnalysis {

@@ -5,6 +5,7 @@ import { PageIntro, SearchToolbar, SectionCard, StatusAlert } from "@/app/admin/
 import { SentimentDistributionSection, type SentimentChartData } from "@/app/admin/_sentiment-charts";
 import { requireRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { countByLabel, groupCountsBy } from "@/lib/sentiment/aggregate";
 import {
   reanalyzeSingleSentimentAction,
   reanalyzeVisibleSentimentsAction,
@@ -127,9 +128,14 @@ export default async function AdminFeedbackPage({
         finalLabel: true,
         feedback: {
           select: {
-            aspect: true,
+            student: {
+              select: { className: true },
+            },
             subject: {
               select: { id: true, name: true },
+            },
+            teacher: {
+              select: { id: true, user: { select: { name: true } } },
             },
           },
         },
@@ -142,7 +148,44 @@ export default async function AdminFeedbackPage({
     (feedback) => feedback.sentiment?.labelSource === LabelSource.MANUAL,
   ).length;
 
-  const chartData = buildSentimentChartData(allSentimentStats);
+  const chartData: SentimentChartData = {
+    overall: countByLabel(allSentimentStats),
+    groups: [
+      {
+        title: "Distribusi per Mata Pelajaran",
+        description: "Sebaran label sentimen final pada masing-masing mata pelajaran.",
+        rows: groupCountsBy(
+          allSentimentStats,
+          (row) => ({ key: row.feedback.subject.id, label: row.feedback.subject.name }),
+          { limit: 8 },
+        ),
+      },
+      {
+        title: "Distribusi per Guru",
+        description: "Sebaran label sentimen final pada umpan balik untuk masing-masing guru.",
+        rows: groupCountsBy(
+          allSentimentStats,
+          (row) =>
+            row.feedback.teacher
+              ? { key: row.feedback.teacher.id, label: row.feedback.teacher.user.name }
+              : null,
+          { limit: 8 },
+        ),
+      },
+      {
+        title: "Distribusi per Kelas",
+        description: "Sebaran label sentimen final pada masing-masing kelas siswa.",
+        rows: groupCountsBy(
+          allSentimentStats,
+          (row) => ({
+            key: row.feedback.student.className,
+            label: row.feedback.student.className,
+          }),
+          { limit: 8 },
+        ),
+      },
+    ],
+  };
 
   return (
     <div className="space-y-5">
@@ -179,7 +222,7 @@ export default async function AdminFeedbackPage({
         <div className="mb-5">
           <p className="text-sm font-semibold text-slate-900">Distribusi Sentimen</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Visualisasi sebaran label sentimen final dari seluruh umpan balik yang sudah dianalisis, dikelompokkan per aspek dan mata pelajaran.
+            Visualisasi sebaran label sentimen final dari seluruh umpan balik yang sudah dianalisis, dikelompokkan per mata pelajaran, guru, dan kelas.
           </p>
         </div>
         <SentimentDistributionSection data={chartData} />
@@ -499,51 +542,4 @@ function formatDateTime(date: Date) {
   }).format(date);
 }
 
-type SentimentStatRow = {
-  finalLabel: SentimentLabel;
-  feedback: {
-    aspect: LearningAspect;
-    subject: { id: string; name: string };
-  };
-};
-
-function buildSentimentChartData(rows: SentimentStatRow[]): SentimentChartData {
-  const overall = { positif: 0, negatif: 0 };
-  const aspectMap = new Map<LearningAspect, { positif: number; negatif: number }>();
-  const subjectMap = new Map<string, { name: string; positif: number; negatif: number }>();
-
-  for (const row of rows) {
-    const label = row.finalLabel;
-    const aspect = row.feedback.aspect;
-    const subjectId = row.feedback.subject.id;
-    const subjectName = row.feedback.subject.name;
-
-    if (label === SentimentLabel.POSITIF) overall.positif++;
-    else overall.negatif++;
-
-    if (!aspectMap.has(aspect)) aspectMap.set(aspect, { positif: 0, negatif: 0 });
-    const ac = aspectMap.get(aspect)!;
-    if (label === SentimentLabel.POSITIF) ac.positif++;
-    else ac.negatif++;
-
-    if (!subjectMap.has(subjectId)) subjectMap.set(subjectId, { name: subjectName, positif: 0, negatif: 0 });
-    const sc = subjectMap.get(subjectId)!;
-    if (label === SentimentLabel.POSITIF) sc.positif++;
-    else sc.negatif++;
-  }
-
-  const byAspect = ([LearningAspect.MATERI, LearningAspect.PENYAMPAIAN, LearningAspect.SOAL] as const).map(
-    (aspect) => {
-      const counts = aspectMap.get(aspect) ?? { positif: 0, negatif: 0 };
-      return { label: feedbackAspectLabelMap[aspect], counts };
-    },
-  );
-
-  const bySubject = Array.from(subjectMap.values())
-    .sort((a, b) => (b.positif + b.negatif) - (a.positif + a.negatif))
-    .slice(0, 8)
-    .map(({ name, positif, negatif }) => ({ label: name, counts: { positif, negatif } }));
-
-  return { overall, byAspect, bySubject };
-}
 

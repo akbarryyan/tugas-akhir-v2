@@ -8,10 +8,15 @@ export type SentimentRowData = {
   counts: SentimentCounts;
 };
 
+export type SentimentBarGroupData = {
+  title: string;
+  description: string;
+  rows: SentimentRowData[];
+};
+
 export type SentimentChartData = {
   overall: SentimentCounts;
-  byAspect: SentimentRowData[];
-  bySubject: SentimentRowData[];
+  groups: SentimentBarGroupData[];
 };
 
 export function SentimentDistributionSection({
@@ -29,24 +34,30 @@ export function SentimentDistributionSection({
     );
   }
 
+  const visibleGroups = data.groups.filter((group) => group.rows.length > 0);
+
   return (
-    <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+    <div
+      className={
+        visibleGroups.length > 0
+          ? "grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]"
+          : "grid gap-5"
+      }
+    >
       <OverallDonut overall={data.overall} total={total} />
 
-      <div className="grid gap-5">
-        <SentimentBarGroup
-          title="Distribusi per Aspek Pembelajaran"
-          description="Sebaran label sentimen final pada masing-masing aspek evaluasi pembelajaran."
-          rows={data.byAspect}
-        />
-        {data.bySubject.length > 0 && (
-          <SentimentBarGroup
-            title="Distribusi per Mata Pelajaran"
-            description="Sebaran label sentimen final pada masing-masing mata pelajaran."
-            rows={data.bySubject}
-          />
-        )}
-      </div>
+      {visibleGroups.length > 0 && (
+        <div className="grid gap-5">
+          {visibleGroups.map((group) => (
+            <SentimentBarGroup
+              key={group.title}
+              title={group.title}
+              description={group.description}
+              rows={group.rows}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

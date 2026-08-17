@@ -266,7 +266,7 @@ function TryoutStatCard({
         </span>
       </div>
       <p className="mt-4 text-sm font-semibold text-slate-500">{label}</p>
-      <p className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">{value}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
       <p className="mt-2 text-sm leading-6 text-slate-500">{helper}</p>
     </div>
   );

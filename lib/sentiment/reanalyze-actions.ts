@@ -128,23 +128,32 @@ export async function reanalyzeVisibleSentimentsAction(formData: FormData) {
       throw new Error("Profil guru tidak ditemukan.");
     }
 
+    // Sengaja tidak menyaring `sentiment: { isNot: null }`. Umpan balik yang
+    // gagal dianalisis saat dikirim (misalnya layanan sedang mati) belum punya
+    // baris SentimentAnalysis, dan justru baris itulah yang paling perlu
+    // dipulihkan lewat reanalyze.
     const feedbacks = await prisma.feedback.findMany({
       where: {
-        sentiment: {
-          isNot: null,
-        },
-        ...(session.user.role === Role.GURU
-          ? {
-              subject: {
-                subjectTeachers: {
-                  some: {
-                    teacherId: teacherProfile!.id,
+        AND: [
+          session.user.role === Role.GURU
+            ? {
+                OR: [
+                  { teacherId: teacherProfile!.id },
+                  {
+                    teacherId: null,
+                    subject: {
+                      subjectTeachers: {
+                        some: {
+                          teacherId: teacherProfile!.id,
+                        },
+                      },
+                    },
                   },
-                },
-              },
-            }
-          : {}),
-        ...buildFeedbackQueryFilter(query),
+                ],
+              }
+            : {},
+          buildFeedbackQueryFilter(query),
+        ],
       },
       select: {
         id: true,
@@ -176,21 +185,27 @@ export async function reanalyzeVisibleSentimentsAction(formData: FormData) {
     let updatedCount = 0;
 
     for (const feedback of feedbacks) {
-      if (!feedback.sentiment) {
-        continue;
-      }
-
       const prediction = await predictSentiment({
         aspect: feedback.aspect,
         comment: feedback.comment,
         subject: feedback.subject.name,
       });
 
-      await prisma.sentimentAnalysis.update({
+      await prisma.sentimentAnalysis.upsert({
         where: {
-          id: feedback.sentiment.id,
+          feedbackId: feedback.id,
         },
-        data: feedback.sentiment.labelSource === LabelSource.MANUAL
+        create: {
+          autoConfidence: prediction.autoConfidence,
+          autoLabel: prediction.autoLabel,
+          autoMethod: prediction.autoMethod,
+          feedbackId: feedback.id,
+          finalLabel: prediction.autoLabel,
+          labelSource: LabelSource.AUTO,
+          modelVersion: prediction.modelVersion,
+          preprocessedText: prediction.preprocessedText,
+        },
+        update: feedback.sentiment?.labelSource === LabelSource.MANUAL
           ? {
               autoConfidence: prediction.autoConfidence,
               autoLabel: prediction.autoLabel,
@@ -284,18 +299,21 @@ export async function reanalyzeSingleSentimentAction(formData: FormData) {
     const feedback = await prisma.feedback.findFirst({
       where: {
         id: parsed.feedbackId,
-        sentiment: {
-          isNot: null,
-        },
         ...(session.user.role === Role.GURU
           ? {
-              subject: {
-                subjectTeachers: {
-                  some: {
-                    teacherId: teacherProfile!.id,
+              OR: [
+                { teacherId: teacherProfile!.id },
+                {
+                  teacherId: null,
+                  subject: {
+                    subjectTeachers: {
+                      some: {
+                        teacherId: teacherProfile!.id,
+                      },
+                    },
                   },
                 },
-              },
+              ],
             }
           : {}),
       },
@@ -317,8 +335,8 @@ export async function reanalyzeSingleSentimentAction(formData: FormData) {
       },
     });
 
-    if (!feedback?.sentiment) {
-      throw new Error("Data sentimen yang dipilih tidak ditemukan atau tidak bisa diakses.");
+    if (!feedback) {
+      throw new Error("Data umpan balik yang dipilih tidak ditemukan atau tidak bisa diakses.");
     }
 
     const prediction = await predictSentiment({
@@ -327,12 +345,22 @@ export async function reanalyzeSingleSentimentAction(formData: FormData) {
       subject: feedback.subject.name,
     });
 
-    await prisma.sentimentAnalysis.update({
+    await prisma.sentimentAnalysis.upsert({
       where: {
-        id: feedback.sentiment.id,
+        feedbackId: feedback.id,
       },
-      data:
-        feedback.sentiment.labelSource === LabelSource.MANUAL
+      create: {
+        autoConfidence: prediction.autoConfidence,
+        autoLabel: prediction.autoLabel,
+        autoMethod: prediction.autoMethod,
+        feedbackId: feedback.id,
+        finalLabel: prediction.autoLabel,
+        labelSource: LabelSource.AUTO,
+        modelVersion: prediction.modelVersion,
+        preprocessedText: prediction.preprocessedText,
+      },
+      update:
+        feedback.sentiment?.labelSource === LabelSource.MANUAL
           ? {
               autoConfidence: prediction.autoConfidence,
               autoLabel: prediction.autoLabel,
